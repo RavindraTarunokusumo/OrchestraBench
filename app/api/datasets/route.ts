@@ -17,8 +17,12 @@ export async function POST(request: Request) {
     return jsonError(400, "Invalid dataset request.", formatZodErrors(parsed.error));
   }
 
-  const dataset = await createDatasetTask(parsed.data);
-  return Response.json({ dataset }, { status: 201 });
+  try {
+    const dataset = await createDatasetTask(parsed.data);
+    return Response.json({ dataset }, { status: 201 });
+  } catch (error) {
+    return jsonError(500, error instanceof Error ? error.message : "Dataset creation failed.");
+  }
 }
 
 async function readJsonBody(request: Request): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {

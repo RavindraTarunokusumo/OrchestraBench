@@ -5,6 +5,10 @@ import type { createDatasetTask } from "@/lib/store/file-store";
 
 const severitySchema = z.enum(["low", "medium", "high", "critical"]);
 const workflowSchema = z.enum(workflowKinds);
+const optionalPositiveNumber = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  z.coerce.number().positive().optional()
+);
 
 const knownBugSchema = z.object({
   id: z.string().trim().min(1),
@@ -21,7 +25,7 @@ export const createRunSchema = z.object({
   prompt: z.string().trim().min(1),
   code: z.string().trim().min(1),
   workflow: workflowSchema,
-  costLimitUsd: z.number().positive().optional(),
+  costLimitUsd: optionalPositiveNumber,
   benchmarkTaskId: z.string().trim().min(1).optional(),
   knownBugs: z.array(knownBugSchema).optional()
 });
@@ -39,7 +43,7 @@ export const createDatasetSchema = z.object({
 
 export const rerunDatasetSchema = z.object({
   workflows: z.array(workflowSchema).min(1).optional().default([...workflowKinds]),
-  costLimitUsd: z.number().positive().optional()
+  costLimitUsd: optionalPositiveNumber
 });
 
 type CreateDatasetInput = Parameters<typeof createDatasetTask>[0];

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { BenchmarkTask, Evaluation, RunInput, RunResult, WorkflowKind } from "@/lib/domain/types";
 import { createConfiguredProvider } from "@/lib/providers/provider";
@@ -9,8 +9,14 @@ type AppData = {
   datasets: BenchmarkTask[];
 };
 
+export type DatasetRerunResult = {
+  runs: RunResult[];
+  failures: Array<{ workflow: WorkflowKind; error: string }>;
+};
+
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "orchestrabench.json");
+let mutationQueue: Promise<unknown> = Promise.resolve();
 
 export async function listRuns(): Promise<RunResult[]> {
   const data = await readData();
@@ -25,9 +31,9 @@ export async function getRun(id: string): Promise<RunResult | undefined> {
 export async function createRun(input: RunInput): Promise<RunResult> {
   const provider = createConfiguredProvider();
   const result = await runWorkflow({ input, provider });
-  const data = await readData();
-  data.runs.unshift(result);
-  await writeData(data);
+  await mutateData((data) => {
+    data.runs.unshift(result);
+  });
   return result;
 }
 
@@ -35,19 +41,19 @@ export async function updateRunEvaluation(
   id: string,
   patch: Pick<Evaluation, "userRating" | "notes">
 ): Promise<RunResult | undefined> {
-  const data = await readData();
-  const run = data.runs.find((item) => item.id === id);
-  if (!run) {
-    return undefined;
-  }
+  return mutateData((data) => {
+    const run = data.runs.find((item) => item.id === id);
+    if (!run) {
+      return undefined;
+    }
 
-  run.evaluation = {
-    ...run.evaluation,
-    userRating: patch.userRating,
-    notes: patch.notes
-  };
-  await writeData(data);
-  return run;
+    run.evaluation = {
+      ...run.evaluation,
+      userRating: patch.userRating,
+      notes: patch.notes
+    };
+    return run;
+  });
 }
 
 export async function listDatasets(): Promise<BenchmarkTask[]> {
@@ -92,9 +98,9 @@ export async function createDatasetTask(input: {
     createdAt: now,
     updatedAt: now
   };
-  const data = await readData();
-  data.datasets.unshift(task);
-  await writeData(data);
+  await mutateData((data) => {
+    data.datasets.unshift(task);
+  });
   return task;
 }
 
@@ -102,29 +108,37 @@ export async function rerunDatasetTask(
   taskId: string,
   workflows: WorkflowKind[],
   costLimitUsd?: number
-): Promise<RunResult[]> {
+): Promise<DatasetRerunResult> {
   const task = await getDataset(taskId);
   if (!task) {
     throw new Error("Dataset task not found.");
   }
 
   const results: RunResult[] = [];
+  const failures: DatasetRerunResult["failures"] = [];
   for (const workflow of workflows) {
-    results.push(
-      await createRun({
-        title: task.title,
-        language: task.language,
-        prompt: task.prompt,
-        code: task.code,
-        knownBugs: task.knownBugs,
-        benchmarkTaskId: task.id,
+    try {
+      results.push(
+        await createRun({
+          title: task.title,
+          language: task.language,
+          prompt: task.prompt,
+          code: task.code,
+          knownBugs: task.knownBugs,
+          benchmarkTaskId: task.id,
+          workflow,
+          costLimitUsd
+        })
+      );
+    } catch (error) {
+      failures.push({
         workflow,
-        costLimitUsd
-      })
-    );
+        error: error instanceof Error ? error.message : "Unknown rerun failure."
+      });
+    }
   }
 
-  return results;
+  return { runs: results, failures };
 }
 
 export async function exportData(): Promise<AppData> {
@@ -135,8 +149,15 @@ async function readData(): Promise<AppData> {
   await mkdir(DATA_DIR, { recursive: true });
   try {
     const raw = await readFile(DATA_FILE, "utf8");
-    return JSON.parse(raw) as AppData;
-  } catch {
+    const parsed = JSON.parse(raw) as unknown;
+    if (isAppData(parsed)) {
+      return parsed;
+    }
+    throw new Error("Stored OrchestraBench data has an invalid shape.");
+  } catch (error) {
+    if (!isNodeError(error) || error.code !== "ENOENT") {
+      throw error;
+    }
     const seeded = seedData();
     await writeData(seeded);
     return seeded;
@@ -145,7 +166,33 @@ async function readData(): Promise<AppData> {
 
 async function writeData(data: AppData): Promise<void> {
   await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(DATA_FILE, JSON.stringify(data, null, 2), "utf8");
+  const tempFile = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tempFile, JSON.stringify(data, null, 2), "utf8");
+  await rename(tempFile, DATA_FILE);
+}
+
+async function mutateData<T>(mutate: (data: AppData) => T): Promise<T> {
+  const nextMutation = mutationQueue.then(async () => {
+    const data = await readData();
+    const result = mutate(data);
+    await writeData(data);
+    return result;
+  });
+  mutationQueue = nextMutation.catch(() => undefined);
+  return nextMutation;
+}
+
+function isAppData(value: unknown): value is AppData {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as AppData).runs) &&
+    Array.isArray((value as AppData).datasets)
+  );
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error;
 }
 
 function seedData(): AppData {

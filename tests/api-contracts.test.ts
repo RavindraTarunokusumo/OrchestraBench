@@ -26,6 +26,29 @@ describe("API request parsers", () => {
     });
   });
 
+  it("treats blank optional numeric fields as omitted", () => {
+    expect(
+      parseRunCreateRequest({
+        title: "Review auth helper",
+        language: "TypeScript",
+        prompt: "Find bugs.",
+        code: "export const ok = true;",
+        workflow: "single_cheap",
+        costLimitUsd: ""
+      }).costLimitUsd
+    ).toBeUndefined();
+
+    expect(parseDatasetRerunRequest({ costLimitUsd: "" })).toEqual({
+      workflows: [
+        "single_cheap",
+        "single_strong",
+        "panel_judge",
+        "cheap_first",
+        "planner_worker_verifier"
+      ]
+    });
+  });
+
   it("rejects invalid workflow values for create-run", () => {
     expect(() =>
       parseRunCreateRequest({

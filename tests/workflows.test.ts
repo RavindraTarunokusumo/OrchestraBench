@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { runWorkflow } from "@/lib/workflows/runner";
 import { createMockProvider } from "@/lib/providers/mock-provider";
 import type { WorkflowKind } from "@/lib/domain/types";
+import type { ModelProvider } from "@/lib/providers/types";
 
 const baseInput = {
   title: "Review auth helper",
@@ -42,13 +43,56 @@ describe("runWorkflow", () => {
     expect(result.calls.map((call) => call.role)).toContain("strong_reviewer");
   });
 
-  it("skips optional escalation when the cost limit is already exhausted", async () => {
+  it("allows free-model escalation even when the cost limit is tiny", async () => {
     const result = await runWorkflow({
       input: { ...baseInput, workflow: "cheap_first", costLimitUsd: 0.0001 },
       provider: createMockProvider({ verifierConfidence: 0.2 })
     });
 
-    expect(result.escalated).toBe(false);
-    expect(result.escalationReason).toContain("Cost limit");
+    expect(result.escalated).toBe(true);
+    expect(result.escalationReason).toContain("0.20");
+  });
+
+  it("returns a failed run with trace information when the provider fails", async () => {
+    const failingProvider: ModelProvider = {
+      label: "Failing provider",
+      async complete() {
+        throw new Error("provider unavailable");
+      }
+    };
+
+    const result = await runWorkflow({
+      input: { ...baseInput, workflow: "single_cheap" },
+      provider: failingProvider
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.failureNotes).toContain("provider unavailable");
+    expect(result.calls[0]).toMatchObject({
+      role: "cheap_reviewer",
+      provider: "Failing provider",
+      error: "provider unavailable"
+    });
+  });
+
+  it("scores missed known bugs instead of always reporting a true positive", async () => {
+    const result = await runWorkflow({
+      input: {
+        ...baseInput,
+        workflow: "single_cheap",
+        knownBugs: [
+          {
+            id: "bug_sql",
+            title: "SQL injection in search",
+            description: "Search concatenates user input into SQL.",
+            severity: "critical"
+          }
+        ]
+      },
+      provider: createMockProvider()
+    });
+
+    expect(result.evaluation.truePositives).toBe(0);
+    expect(result.evaluation.missedKnownBugs).toBe(1);
   });
 });

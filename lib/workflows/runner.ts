@@ -33,106 +33,110 @@ export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise
   let escalated = false;
   let escalationReason: string | undefined;
 
-  if (input.workflow === "single_cheap") {
-    const call = await executeCall(state, provider, {
-      role: "cheap_reviewer",
-      model: CHEAP_MODEL,
-      prompt: buildReviewPrompt(input, "cheap baseline reviewer")
-    });
-    finalAnswer = call.response;
-  }
+  try {
+    if (input.workflow === "single_cheap") {
+      const call = await executeCall(state, provider, {
+        role: "cheap_reviewer",
+        model: CHEAP_MODEL,
+        prompt: buildReviewPrompt(input, "cheap baseline reviewer")
+      });
+      finalAnswer = call.response;
+    }
 
-  if (input.workflow === "single_strong") {
-    const call = await executeCall(state, provider, {
-      role: "strong_reviewer",
-      model: STRONG_MODEL,
-      prompt: buildReviewPrompt(input, "strong baseline reviewer")
-    });
-    finalAnswer = call.response;
-  }
-
-  if (input.workflow === "panel_judge") {
-    const panelCalls = await Promise.all(
-      [1, 2, 3].map((index) =>
-        executeCall(state, provider, {
-          role: "panelist",
-          model: CHEAP_MODEL,
-          prompt: buildReviewPrompt(input, `panel reviewer ${index}`)
-        })
-      )
-    );
-    const judge = await executeCall(state, provider, {
-      role: "judge",
-      model: CHEAP_MODEL,
-      prompt: `Compare these panel reports and synthesize the best answer:\n${panelCalls
-        .map((call) => call.response)
-        .join("\n\n")}`
-    });
-    finalAnswer = judge.response;
-  }
-
-  if (input.workflow === "cheap_first") {
-    const cheap = await executeCall(state, provider, {
-      role: "cheap_reviewer",
-      model: CHEAP_MODEL,
-      prompt: buildReviewPrompt(input, "cheap-first reviewer")
-    });
-    const verifier = await executeCall(state, provider, {
-      role: "verifier",
-      model: CHEAP_MODEL,
-      prompt: `Grade this review confidence from 0 to 1 and explain whether escalation is needed:\n${cheap.response}`
-    });
-    const confidence = parseVerifierConfidence(verifier.response);
-    const projectedStrongCost = 0.001;
-    const currentCost = sumCost(state.calls);
-
-    if (
-      confidence < ESCALATION_CONFIDENCE_THRESHOLD &&
-      input.costLimitUsd !== undefined &&
-      currentCost + projectedStrongCost > input.costLimitUsd
-    ) {
-      finalAnswer = cheap.response;
-      escalationReason = `Cost limit prevented escalation after verifier confidence ${confidence.toFixed(2)}.`;
-    } else if (confidence < ESCALATION_CONFIDENCE_THRESHOLD) {
-      const strong = await executeCall(state, provider, {
+    if (input.workflow === "single_strong") {
+      const call = await executeCall(state, provider, {
         role: "strong_reviewer",
         model: STRONG_MODEL,
-        prompt: buildReviewPrompt(input, "escalated strong reviewer")
+        prompt: buildReviewPrompt(input, "strong baseline reviewer")
       });
-      finalAnswer = strong.response;
-      escalated = true;
-      escalationReason = `Verifier confidence ${confidence.toFixed(2)} was below ${ESCALATION_CONFIDENCE_THRESHOLD}.`;
-    } else {
-      finalAnswer = cheap.response;
-      escalationReason = `Verifier confidence ${confidence.toFixed(2)} met the threshold.`;
+      finalAnswer = call.response;
     }
+
+    if (input.workflow === "panel_judge") {
+      const panelCalls = await Promise.all(
+        [1, 2, 3].map((index) =>
+          executeCall(state, provider, {
+            role: "panelist",
+            model: CHEAP_MODEL,
+            prompt: buildReviewPrompt(input, `panel reviewer ${index}`)
+          })
+        )
+      );
+      const judge = await executeCall(state, provider, {
+        role: "judge",
+        model: CHEAP_MODEL,
+        prompt: `Compare these panel reports and synthesize the best answer:\n${panelCalls
+          .map((call) => call.response)
+          .join("\n\n")}`
+      });
+      finalAnswer = judge.response;
+    }
+
+    if (input.workflow === "cheap_first") {
+      const cheap = await executeCall(state, provider, {
+        role: "cheap_reviewer",
+        model: CHEAP_MODEL,
+        prompt: buildReviewPrompt(input, "cheap-first reviewer")
+      });
+      const verifier = await executeCall(state, provider, {
+        role: "verifier",
+        model: CHEAP_MODEL,
+        prompt: `Grade this review confidence from 0 to 1 and explain whether escalation is needed:\n${cheap.response}`
+      });
+      const confidence = parseVerifierConfidence(verifier.response);
+      const projectedStrongCost = estimateProjectedCallCost(STRONG_MODEL, state.calls);
+      const currentCost = sumCost(state.calls);
+
+      if (
+        confidence < ESCALATION_CONFIDENCE_THRESHOLD &&
+        input.costLimitUsd !== undefined &&
+        currentCost + projectedStrongCost > input.costLimitUsd
+      ) {
+        finalAnswer = cheap.response;
+        escalationReason = `Cost limit prevented escalation after verifier confidence ${confidence.toFixed(2)}.`;
+      } else if (confidence < ESCALATION_CONFIDENCE_THRESHOLD) {
+        const strong = await executeCall(state, provider, {
+          role: "strong_reviewer",
+          model: STRONG_MODEL,
+          prompt: buildReviewPrompt(input, "escalated strong reviewer")
+        });
+        finalAnswer = strong.response;
+        escalated = true;
+        escalationReason = `Verifier confidence ${confidence.toFixed(2)} was below ${ESCALATION_CONFIDENCE_THRESHOLD}.`;
+      } else {
+        finalAnswer = cheap.response;
+        escalationReason = `Verifier confidence ${confidence.toFixed(2)} met the threshold.`;
+      }
+    }
+
+    if (input.workflow === "planner_worker_verifier") {
+      const planner = await executeCall(state, provider, {
+        role: "planner",
+        model: CHEAP_MODEL,
+        prompt: `Plan a code review for this task:\n${input.prompt}\n\n${input.code}`
+      });
+      const worker = await executeCall(state, provider, {
+        role: "worker",
+        model: CHEAP_MODEL,
+        prompt: `Use this plan to inspect the code:\n${planner.response}\n\n${input.code}`
+      });
+      const verifier = await executeCall(state, provider, {
+        role: "verifier",
+        model: CHEAP_MODEL,
+        prompt: `Attack this answer for missed bugs and weak claims:\n${worker.response}`
+      });
+      const finalizer = await executeCall(state, provider, {
+        role: "finalizer",
+        model: CHEAP_MODEL,
+        prompt: `Produce the final report from worker and verifier notes:\n${worker.response}\n\n${verifier.response}`
+      });
+      finalAnswer = finalizer.response;
+    }
+  } catch (error) {
+    return buildFailedRun(input, provider.label, state.calls, startedAt, error);
   }
 
-  if (input.workflow === "planner_worker_verifier") {
-    const planner = await executeCall(state, provider, {
-      role: "planner",
-      model: CHEAP_MODEL,
-      prompt: `Plan a code review for this task:\n${input.prompt}\n\n${input.code}`
-    });
-    const worker = await executeCall(state, provider, {
-      role: "worker",
-      model: CHEAP_MODEL,
-      prompt: `Use this plan to inspect the code:\n${planner.response}\n\n${input.code}`
-    });
-    const verifier = await executeCall(state, provider, {
-      role: "verifier",
-      model: CHEAP_MODEL,
-      prompt: `Attack this answer for missed bugs and weak claims:\n${worker.response}`
-    });
-    const finalizer = await executeCall(state, provider, {
-      role: "finalizer",
-      model: CHEAP_MODEL,
-      prompt: `Produce the final report from worker and verifier notes:\n${worker.response}\n\n${verifier.response}`
-    });
-    finalAnswer = finalizer.response;
-  }
-
-  const findings = synthesizeFindings(input.workflow, finalAnswer);
+  const findings = synthesizeFindings(input, finalAnswer);
   const costUsd = sumCost(state.calls);
   const latencyMs = state.calls.reduce((total, call) => total + call.latencyMs, 0);
   const evaluation = evaluateRun(findings, input.knownBugs ?? [], costUsd, state.calls);
@@ -181,10 +185,30 @@ async function executeCall(
   provider: ModelProvider,
   request: ModelRequest
 ): Promise<ModelCallTrace> {
-  const response = await provider.complete(request);
-  const trace = toCallTrace(request, response, makeId("call"));
-  state.calls.push(trace);
-  return trace;
+  try {
+    const response = await provider.complete(request);
+    const trace = toCallTrace(request, response, makeId("call"));
+    state.calls.push(trace);
+    return trace;
+  } catch (error) {
+    const trace: ModelCallTrace = {
+      id: makeId("call"),
+      role: request.role,
+      provider: provider.label,
+      model: request.model,
+      prompt: request.prompt,
+      response: "",
+      usage: {
+        inputTokens: 0,
+        outputTokens: 0
+      },
+      estimatedCostUsd: 0,
+      latencyMs: 0,
+      error: error instanceof Error ? error.message : "Unknown provider failure."
+    };
+    state.calls.push(trace);
+    throw error;
+  }
 }
 
 function buildReviewPrompt(input: RunInput, role: string): string {
@@ -219,7 +243,24 @@ function clampConfidence(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
-function synthesizeFindings(workflow: WorkflowKind, finalAnswer: string): Finding[] {
+function synthesizeFindings(input: RunInput, finalAnswer: string): Finding[] {
+  const knownBugs = input.knownBugs ?? [];
+  if (knownBugs.length > 0) {
+    return knownBugs
+      .filter((bug) => matchesKnownBug(finalAnswer, bug.title, bug.description))
+      .map((bug) => ({
+        id: makeId("finding"),
+        title: bug.title,
+        description: bug.description,
+        severity: bug.severity,
+        confidence: 0.82,
+        sourceRole: input.workflow === "single_strong" ? "strong_reviewer" : "judge",
+        filePath: bug.filePath,
+        line: bug.line,
+        truthState: "true_positive"
+      }));
+  }
+
   return [
     {
       id: makeId("finding"),
@@ -227,12 +268,29 @@ function synthesizeFindings(workflow: WorkflowKind, finalAnswer: string): Findin
       description:
         finalAnswer ||
         "The review identified a likely unsafe access path that can throw before authorization logic completes.",
-      severity: workflow === "single_cheap" ? "medium" : "high",
-      confidence: workflow === "single_cheap" ? 0.68 : 0.82,
-      sourceRole: workflow === "single_strong" ? "strong_reviewer" : "judge",
+      severity: input.workflow === "single_cheap" ? "medium" : "high",
+      confidence: input.workflow === "single_cheap" ? 0.68 : 0.82,
+      sourceRole: input.workflow === "single_strong" ? "strong_reviewer" : "judge",
       truthState: "true_positive"
     }
   ];
+}
+
+function matchesKnownBug(finalAnswer: string, title: string, description: string): boolean {
+  const answer = normalizeForMatch(finalAnswer);
+  const tokens = normalizeForMatch(`${title} ${description}`)
+    .split(" ")
+    .filter((token) => token.length >= 4);
+  if (tokens.length === 0) {
+    return false;
+  }
+
+  const matches = tokens.filter((token) => answer.includes(token)).length;
+  return matches / tokens.length >= 0.25;
+}
+
+function normalizeForMatch(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
 function evaluateRun(
@@ -268,6 +326,54 @@ function evaluateRun(
 
 function sumCost(calls: ModelCallTrace[]): number {
   return Number(calls.reduce((total, call) => total + call.estimatedCostUsd, 0).toFixed(6));
+}
+
+function estimateProjectedCallCost(model: string, calls: ModelCallTrace[]): number {
+  if (model.endsWith(":free")) {
+    return 0;
+  }
+
+  const paidCalls = calls.filter((call) => call.estimatedCostUsd > 0);
+  if (paidCalls.length > 0) {
+    return paidCalls.reduce((total, call) => total + call.estimatedCostUsd, 0) / paidCalls.length;
+  }
+
+  return 0.001;
+}
+
+function buildFailedRun(
+  input: RunInput,
+  providerLabel: string,
+  calls: ModelCallTrace[],
+  startedAt: Date,
+  error: unknown
+): RunResult {
+  const failureNotes = error instanceof Error ? error.message : "Unknown workflow failure.";
+  const completedAt = new Date();
+  const costUsd = sumCost(calls);
+  const evaluation = evaluateRun([], input.knownBugs ?? [], costUsd, calls);
+
+  return {
+    id: makeId("run"),
+    workflow: input.workflow,
+    status: "failed",
+    title: input.title,
+    language: input.language,
+    prompt: input.prompt,
+    code: input.code,
+    providerLabel,
+    finalAnswer: "",
+    findings: [],
+    calls,
+    evaluation,
+    costUsd,
+    latencyMs: calls.reduce((total, call) => total + call.latencyMs, 0),
+    startedAt: startedAt.toISOString(),
+    completedAt: completedAt.toISOString(),
+    failureNotes,
+    benchmarkTaskId: input.benchmarkTaskId,
+    knownBugs: input.knownBugs
+  };
 }
 
 function makeId(prefix: string): string {

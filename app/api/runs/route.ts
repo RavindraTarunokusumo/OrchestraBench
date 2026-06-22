@@ -17,8 +17,12 @@ export async function POST(request: Request) {
     return jsonError(400, "Invalid run request.", formatZodErrors(parsed.error));
   }
 
-  const run = await createRun(parsed.data);
-  return Response.json({ run }, { status: 201 });
+  try {
+    const run = await createRun(parsed.data);
+    return Response.json({ run }, { status: 201 });
+  } catch (error) {
+    return jsonError(502, error instanceof Error ? error.message : "Run execution failed.");
+  }
 }
 
 async function readJsonBody(request: Request): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {

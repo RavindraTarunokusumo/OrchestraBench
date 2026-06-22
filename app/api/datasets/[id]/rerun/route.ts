@@ -18,8 +18,8 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
-    const runs = await rerunDatasetTask(id, parsed.data.workflows, parsed.data.costLimitUsd);
-    return Response.json({ runs }, { status: 201 });
+    const result = await rerunDatasetTask(id, parsed.data.workflows, parsed.data.costLimitUsd);
+    return Response.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "Dataset task not found.") {
       return jsonError(404, "Dataset task not found.");

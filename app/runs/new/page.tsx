@@ -62,7 +62,7 @@ export default function NewRunPage() {
           </div>
           <div className="field">
             <label htmlFor="costLimitUsd">Cost limit USD</label>
-            <input id="costLimitUsd" name="costLimitUsd" type="number" step="0.0001" min="0" placeholder="0.02" />
+            <input id="costLimitUsd" name="costLimitUsd" type="number" step="0.0001" min="0.0001" placeholder="0.02" />
           </div>
           <button className="button primary" type="submit">
             Run benchmark
