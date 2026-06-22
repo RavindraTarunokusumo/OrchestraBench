@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseDatasetCreateRequest } from "@/app/api/datasets/route";
-import { parseDatasetRerunRequest } from "@/app/api/datasets/[id]/rerun/route";
-import { parseRunCreateRequest } from "@/app/api/runs/route";
+import {
+  parseDatasetCreateRequest,
+  parseDatasetRerunRequest,
+  parseRunCreateRequest
+} from "@/lib/api/contracts";
 
 describe("API request parsers", () => {
   it("normalizes a create-run request", () => {

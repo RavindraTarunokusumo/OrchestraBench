@@ -1,18 +1,5 @@
-import { z } from "zod";
+import { createDatasetSchema, formatZodErrors } from "@/lib/api/contracts";
 import { createDatasetTask, listDatasets } from "@/lib/store/file-store";
-
-const createDatasetSchema = z.object({
-  title: z.string().trim().min(1),
-  language: z.string().trim().min(1),
-  prompt: z.string().trim().min(1),
-  code: z.string().trim().min(1),
-  knownBugTitle: z.string().trim().min(1).optional(),
-  knownBugDescription: z.string().trim().min(1).optional(),
-  knownBugSeverity: z.enum(["low", "medium", "high", "critical"]).optional(),
-  tags: z.array(z.string().trim().min(1)).optional().default([])
-});
-
-type CreateDatasetInput = Parameters<typeof createDatasetTask>[0];
 
 export async function GET() {
   const datasets = await listDatasets();
@@ -34,10 +21,6 @@ export async function POST(request: Request) {
   return Response.json({ dataset }, { status: 201 });
 }
 
-export function parseDatasetCreateRequest(data: unknown): CreateDatasetInput {
-  return createDatasetSchema.parse(data);
-}
-
 async function readJsonBody(request: Request): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
   try {
     return { ok: true, data: await request.json() };
@@ -48,11 +31,4 @@ async function readJsonBody(request: Request): Promise<{ ok: true; data: unknown
 
 function jsonError(status: number, error: string, details?: string[]) {
   return Response.json({ error, ...(details ? { details } : {}) }, { status });
-}
-
-function formatZodErrors(error: z.ZodError): string[] {
-  return error.issues.map((issue) => {
-    const path = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
-    return `${path}${issue.message}`;
-  });
 }

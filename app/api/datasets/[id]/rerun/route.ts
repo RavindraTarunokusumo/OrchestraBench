@@ -1,20 +1,8 @@
-import { z } from "zod";
-import { workflowKinds } from "@/lib/domain/types";
-import type { WorkflowKind } from "@/lib/domain/types";
+import { formatZodErrors, rerunDatasetSchema } from "@/lib/api/contracts";
 import { rerunDatasetTask } from "@/lib/store/file-store";
-
-const rerunDatasetSchema = z.object({
-  workflows: z.array(z.enum(workflowKinds)).min(1).optional().default([...workflowKinds]),
-  costLimitUsd: z.number().positive().optional()
-});
 
 type RouteContext = {
   params: Promise<{ id: string }>;
-};
-
-type RerunDatasetInput = {
-  workflows: WorkflowKind[];
-  costLimitUsd?: number;
 };
 
 export async function POST(request: Request, context: RouteContext) {
@@ -41,10 +29,6 @@ export async function POST(request: Request, context: RouteContext) {
   }
 }
 
-export function parseDatasetRerunRequest(data: unknown): RerunDatasetInput {
-  return rerunDatasetSchema.parse(data);
-}
-
 async function readJsonBody(request: Request): Promise<{ ok: true; data: unknown } | { ok: false; error: string }> {
   try {
     return { ok: true, data: await request.json() };
@@ -55,11 +39,4 @@ async function readJsonBody(request: Request): Promise<{ ok: true; data: unknown
 
 function jsonError(status: number, error: string, details?: string[]) {
   return Response.json({ error, ...(details ? { details } : {}) }, { status });
-}
-
-function formatZodErrors(error: z.ZodError): string[] {
-  return error.issues.map((issue) => {
-    const path = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
-    return `${path}${issue.message}`;
-  });
 }
