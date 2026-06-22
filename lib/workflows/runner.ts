@@ -12,7 +12,7 @@ import type { ModelProvider, ModelRequest } from "@/lib/providers/types";
 import { toCallTrace } from "@/lib/providers/types";
 
 const CHEAP_MODEL = "cohere/north-mini-code:free";
-const STRONG_MODEL = process.env.OPENROUTER_STRONG_MODEL || "openai/gpt-4o-mini";
+const STRONG_MODEL = process.env.OPENROUTER_STRONG_MODEL || "cohere/north-mini-code:free";
 const ESCALATION_CONFIDENCE_THRESHOLD = 0.6;
 
 type RunWorkflowArgs = {
