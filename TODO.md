@@ -6,11 +6,13 @@ Completed sessions must be moved to `docs/iterations/archive/`.
 
 ## Backlog
 
-- [ ] Milestone 1 — Baseline Runner (SPEC): Next.js app, DB schema, OpenRouter wrapper, single cheap/strong workflows, run detail page.
-- [ ] Milestone 2 — Panel + Judge
-- [ ] Milestone 3 — Cheap Escalation
-- [ ] Milestone 4 — Evaluation Dashboard
-- [ ] Milestone 5 — Dataset Mode
+- [ ] MVP implementation from `SPEC.md`
+  - [x] Shared foundation: Next.js/TypeScript app scaffold, Prisma schema, provider contracts, tests, and local env docs.
+  - [ ] Milestone 1 — Baseline Runner: single cheap/strong workflows and run detail page.
+  - [ ] Milestone 2 — Panel + Judge: independent panel calls, judge synthesis, and trace display.
+  - [ ] Milestone 3 — Cheap Escalation: verifier, escalation logic, cost limits, and comparison signals.
+  - [ ] Milestone 4 — Evaluation Dashboard: feedback, metrics, quality/value scores, and workflow comparison.
+  - [ ] Milestone 5 — Dataset Mode: benchmark task CRUD, seeded examples, reruns, and JSON export.
 
 ## Future Backlog
 
