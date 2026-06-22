@@ -48,7 +48,7 @@ Every workflow returns the same `RunResult` shape: status, final answer, finding
 
 ## Provider Selection
 
-`createConfiguredProvider()` uses OpenRouter only when `OPENROUTER_API_KEY` is present. Otherwise it falls back to the mock provider. The cheap model defaults to `cohere/north-mini-code:free`; the strong model defaults to `openai/gpt-4o-mini` and can be overridden with `OPENROUTER_STRONG_MODEL`.
+`createConfiguredProvider()` uses OpenRouter only when `OPENROUTER_API_KEY` is present. Otherwise it falls back to the mock provider. The cheap and strong workflow defaults use `cohere/north-mini-code:free`; the strong model can be overridden with `OPENROUTER_STRONG_MODEL`.
 
 ## Current Constraints
 
