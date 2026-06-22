@@ -25,7 +25,7 @@ export async function POST(request: Request, context: RouteContext) {
       return jsonError(404, "Dataset task not found.");
     }
 
-    throw error;
+    return jsonError(500, error instanceof Error ? error.message : "Dataset rerun failed.");
   }
 }
 

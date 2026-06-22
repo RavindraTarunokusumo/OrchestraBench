@@ -53,6 +53,7 @@ export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise
     }
 
     if (input.workflow === "panel_judge") {
+      assertWithinProjectedCostLimit(input.costLimitUsd, CHEAP_MODEL, 4, state.calls);
       const panelCalls = await Promise.all(
         [1, 2, 3].map((index) =>
           executeCall(state, provider, {
@@ -110,6 +111,7 @@ export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise
     }
 
     if (input.workflow === "planner_worker_verifier") {
+      assertWithinProjectedCostLimit(input.costLimitUsd, CHEAP_MODEL, 4, state.calls);
       const planner = await executeCall(state, provider, {
         role: "planner",
         model: CHEAP_MODEL,
@@ -339,6 +341,22 @@ function estimateProjectedCallCost(model: string, calls: ModelCallTrace[]): numb
   }
 
   return 0.001;
+}
+
+function assertWithinProjectedCostLimit(
+  costLimitUsd: number | undefined,
+  model: string,
+  additionalCalls: number,
+  calls: ModelCallTrace[]
+): void {
+  if (costLimitUsd === undefined) {
+    return;
+  }
+
+  const projectedCost = sumCost(calls) + estimateProjectedCallCost(model, calls) * additionalCalls;
+  if (projectedCost > costLimitUsd) {
+    throw new Error(`Cost limit would be exceeded before starting this workflow (${projectedCost.toFixed(4)} USD).`);
+  }
 }
 
 function buildFailedRun(

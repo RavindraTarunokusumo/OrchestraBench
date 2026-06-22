@@ -19,6 +19,10 @@ const optionalRating = z.preprocess(
   (value) => (value === "" || value === null || value === undefined ? undefined : value),
   z.coerce.number().min(1).max(5).optional()
 );
+const optionalTrimmedString = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  z.string().trim().optional()
+);
 
 const runSchema = z.object({
   title: z.string().trim().min(1),
@@ -55,7 +59,7 @@ export async function feedbackAction(formData: FormData): Promise<void> {
     redirect("/dashboard?error=invalid-feedback");
   }
   const userRating = optionalRating.parse(formData.get("userRating"));
-  const notes = z.string().optional().parse(formData.get("notes"));
+  const notes = optionalTrimmedString.parse(formData.get("notes"));
   await updateRunEvaluation(runId.data, { userRating, notes });
   redirect(`/runs/${runId.data}`);
 }
