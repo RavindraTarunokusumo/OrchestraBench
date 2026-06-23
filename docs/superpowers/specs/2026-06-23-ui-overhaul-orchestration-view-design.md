@@ -33,8 +33,9 @@ evaluation, and feedback.
 1. Adopt Tailwind v4 + shadcn/ui across all pages, with light and dark themes.
 2. Live orchestration view: as a run executes, stream step-by-step progress and animate
    a node-graph of the workflow (User → Router → role agents → Judge/Finalizer → Result).
-3. Populate pages: real landing/overview home, richer dashboard (charts), a workflow
-   guide page, and empty/loading states throughout.
+3. Populate pages: real landing/overview home, richer dashboard (charts), and
+   empty/loading states throughout. (A dedicated workflow-guide page is **deferred**
+   to a later session.)
 4. Existing functionality (dataset rerun, feedback, export, run detail) must keep working.
 
 ### Non-functional
@@ -90,7 +91,8 @@ evaluation, and feedback.
     escalation banner when emitted.
   - **Minimum per-step display duration** (client-side, ~400–600ms) so fast backends
     still produce a legible animation.
-  - Animation via Framer Motion (`motion`) for state-driven node/edge transitions.
+  - Animation via **GSAP** (timeline-driven node glow + SVG edge-flow tweens),
+    wired through React refs with cleanup on unmount.
   - Two modes: `live` (consumes the SSE stream) and `static` (renders a graph or a
     completed trace without animation/with replay).
 - A `useRunStream` hook wraps `fetch` + stream parsing into typed events and derived
@@ -104,8 +106,6 @@ evaluation, and feedback.
   primary CTA to New Run, recent-runs strip. Replaces the redirect.
 - **`/dashboard`**: keep comparison table; add value-score leaderboard bars and a
   quality-vs-cost chart (shadcn/recharts), per-workflow cards, and an empty state.
-- **`/workflows` Workflow Guide (new)**: each of the 5 workflows explained with its
-  static role diagram (`OrchestrationCanvas` static mode) and guidance on when to use it.
 - **Run Detail `/runs/[id]`**: render a static `OrchestrationCanvas` replay from the
   saved `calls` trace, alongside the existing findings/evaluation/trace sections.
 - **Empty/loading**: `loading.tsx` skeletons + empty states for dashboard, datasets,
@@ -143,17 +143,18 @@ New Run form (client)
 ## 8. Dependencies to Add
 - `tailwindcss` (v4) + PostCSS pipeline, `class-variance-authority`, `clsx`,
   `tailwind-merge`, `lucide-react`, `next-themes`, Radix primitives (via shadcn),
-  `recharts` (via shadcn chart), `motion` (Framer Motion).
+  `recharts` (via shadcn chart), `gsap`.
 
 ## 9. Phasing (small commits)
 1. Tailwind + shadcn foundation, theming, nav.
 2. Workflow graph builder + event types + streaming refactor of `runWorkflow`.
 3. `/api/runs/stream` route handler.
-4. `OrchestrationCanvas` + `useRunStream` (live + static modes).
+4. `OrchestrationCanvas` (GSAP) + `useRunStream` (live + static modes).
 5. New Run live integration.
-6. Home landing + Workflow guide page.
-7. Dashboard charts + empty/loading states + Run Detail static replay.
+6. Home landing page.
+7. Dashboard charts (recharts) + empty/loading states + Run Detail static replay.
 
 ## 10. Out of Scope
+- Dedicated `/workflows` guide page (**deferred** to a later session).
 - Inngest/queue-based execution, Postgres/Prisma migration, real-time multi-user updates,
   auth, and provider changes beyond what already exists.
