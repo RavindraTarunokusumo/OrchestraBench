@@ -31,6 +31,10 @@ export async function getRun(id: string): Promise<RunResult | undefined> {
 export async function createRun(input: RunInput): Promise<RunResult> {
   const provider = createConfiguredProvider();
   const result = await runWorkflow({ input, provider });
+  return saveRun(result);
+}
+
+export async function saveRun(result: RunResult): Promise<RunResult> {
   await mutateData((data) => {
     data.runs.unshift(result);
   });
