@@ -8,7 +8,7 @@ Completed sessions must be moved to `docs/iterations/archive/`.
 
 - [ ] UI overhaul + live orchestration view (spec: `docs/superpowers/specs/2026-06-23-ui-overhaul-orchestration-view-design.md`)
   - [x] Phase 1 — Tailwind v4 + shadcn/ui foundation, light/dark theming (next-themes), polished top nav. (894af25)
-  - [ ] Phase 2 — Workflow graph builder + streaming event types + `runWorkflow` `onEvent` refactor (callers unchanged).
+  - [x] Phase 2 — Workflow graph builder + streaming event types + `runWorkflow` `onEvent` refactor (callers unchanged). (7a20a7a)
   - [ ] Phase 3 — `POST /api/runs/stream` route handler (SSE, validate, persist, emit run-final).
   - [ ] Phase 4 — `OrchestrationCanvas` (GSAP) + `useRunStream` hook (live + static modes).
   - [ ] Phase 5 — New Run page live integration (in-place canvas, inline summary, link to detail).
