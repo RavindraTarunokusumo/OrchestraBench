@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model BenchmarkTask {
+  id        String   @id @default(cuid())
+  title     String
+  language  String
+  prompt    String
+  code      String
+  knownBugs Json
+  tags      String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  runs      Run[]
+}
+
+model Run {
+  id              String          @id @default(cuid())
+  benchmarkTaskId String?
+  benchmarkTask   BenchmarkTask?  @relation(fields: [benchmarkTaskId], references: [id])
+  title           String
+  language        String
+  prompt          String
+  code            String
+  workflow        String
+  status          String
+  providerLabel   String
+  finalAnswer     String
+  costLimitUsd    Decimal?
+  costUsd         Decimal
+  latencyMs       Int
+  escalated       Boolean         @default(false)
+  escalationReason String?
+  failureNotes    String?
+  knownBugs       Json?
+  startedAt       DateTime
+  completedAt     DateTime
+  modelCalls      ModelCall[]
+  findings        Finding[]
+  evaluation      Evaluation?
+}
+
+model ModelCall {
+  id               String  @id @default(cuid())
+  runId            String
+  run              Run     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  role             String
+  provider         String
+  model            String
+  prompt           String
+  response         String
+  inputTokens      Int
+  outputTokens     Int
+  estimatedCostUsd Decimal
+  latencyMs        Int
+  error            String?
+}
+
+model Finding {
+  id          String  @id @default(cuid())
+  runId       String
+  run         Run     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  severity    String
+  confidence  Float
+  sourceRole  String
+  filePath    String?
+  line        Int?
+  truthState  String?
+}
+
+model Evaluation {
+  id                         String  @id @default(cuid())
+  runId                      String  @unique
+  run                        Run     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  truePositives              Int
+  falsePositives             Int
+  missedKnownBugs            Int
+  highSeverityTruePositives  Int
+  qualityScore               Float
+  valueScore                 Float
+  judgeConfidence            Float
+  userRating                 Int?
+  notes                      String?
+}

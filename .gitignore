@@ -1,0 +1,9 @@
+.next/
+node_modules/
+.env*.local
+.env
+.data/
+coverage/
+dist/
+tsconfig.tsbuildinfo
+.node_modules_broken_*/
