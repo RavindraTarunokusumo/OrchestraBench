@@ -2,29 +2,49 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
 
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Toaster } from "@/components/ui/sonner";
+
 export const metadata: Metadata = {
   title: "OrchestraBench",
   description: "Adaptive multi-model orchestration benchmarker for code review tasks"
 };
 
+const navLinks = [
+  { href: "/runs/new", label: "New Run" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/datasets", label: "Datasets" },
+  { href: "/api/export", label: "Export JSON" }
+];
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body>
-        <div className="shell">
-          <header className="topbar">
-            <Link className="brand" href="/runs/new">
-              OrchestraBench
-            </Link>
-            <nav className="nav" aria-label="Primary navigation">
-              <Link href="/runs/new">New Run</Link>
-              <Link href="/dashboard">Dashboard</Link>
-              <Link href="/datasets">Datasets</Link>
-              <Link href="/api/export">Export JSON</Link>
-            </nav>
-          </header>
-          {children}
-        </div>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <div className="shell">
+            <header className="bg-background/95 supports-backdrop-filter:bg-background/60 sticky top-0 z-10 flex flex-wrap items-center justify-between gap-4 border-b px-6 py-3 backdrop-blur">
+              <Link href="/" className="text-lg font-semibold tracking-tight">
+                OrchestraBench
+              </Link>
+              <nav aria-label="Primary navigation" className="flex flex-wrap items-center gap-1 text-sm">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-md px-3 py-2 font-medium transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+                <ThemeToggle />
+              </nav>
+            </header>
+            {children}
+          </div>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );
