@@ -10,32 +10,40 @@ import type {
 import { computeEvaluationScores } from "@/lib/evaluation/metrics";
 import type { ModelProvider, ModelRequest } from "@/lib/providers/types";
 import { toCallTrace } from "@/lib/providers/types";
+import { buildWorkflowGraph } from "@/lib/workflows/graph";
+import type { WorkflowEventHandler } from "@/lib/workflows/events";
 
 const CHEAP_MODEL = "cohere/north-mini-code:free";
 const STRONG_MODEL = process.env.OPENROUTER_STRONG_MODEL || "cohere/north-mini-code:free";
 const ESCALATION_CONFIDENCE_THRESHOLD = 0.6;
+const RESPONSE_PREVIEW_LENGTH = 200;
 
 type RunWorkflowArgs = {
   input: RunInput;
   provider: ModelProvider;
+  onEvent?: WorkflowEventHandler;
 };
 
 type CallState = {
   calls: ModelCallTrace[];
+  onEvent?: WorkflowEventHandler;
+  stepCounter: number;
 };
 
-export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise<RunResult> {
+export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs): Promise<RunResult> {
   validateRunInput(input);
 
   const startedAt = new Date();
-  const state: CallState = { calls: [] };
+  const state: CallState = { calls: [], onEvent, stepCounter: 0 };
   let finalAnswer = "";
   let escalated = false;
   let escalationReason: string | undefined;
 
+  emitRunInit(input.workflow, onEvent);
+
   try {
     if (input.workflow === "single_cheap") {
-      const call = await executeCall(state, provider, {
+      const call = await executeCall(state, provider, "cheap_reviewer", {
         role: "cheap_reviewer",
         model: CHEAP_MODEL,
         prompt: buildReviewPrompt(input, "cheap baseline reviewer")
@@ -44,7 +52,7 @@ export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise
     }
 
     if (input.workflow === "single_strong") {
-      const call = await executeCall(state, provider, {
+      const call = await executeCall(state, provider, "strong_reviewer", {
         role: "strong_reviewer",
         model: STRONG_MODEL,
         prompt: buildReviewPrompt(input, "strong baseline reviewer")
@@ -56,14 +64,14 @@ export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise
       assertWithinProjectedCostLimit(input.costLimitUsd, CHEAP_MODEL, 4, state.calls);
       const panelCalls = await Promise.all(
         [1, 2, 3].map((index) =>
-          executeCall(state, provider, {
+          executeCall(state, provider, `panelist-${index}`, {
             role: "panelist",
             model: CHEAP_MODEL,
             prompt: buildReviewPrompt(input, `panel reviewer ${index}`)
           })
         )
       );
-      const judge = await executeCall(state, provider, {
+      const judge = await executeCall(state, provider, "judge", {
         role: "judge",
         model: CHEAP_MODEL,
         prompt: `Compare these panel reports and synthesize the best answer:\n${panelCalls
@@ -74,12 +82,12 @@ export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise
     }
 
     if (input.workflow === "cheap_first") {
-      const cheap = await executeCall(state, provider, {
+      const cheap = await executeCall(state, provider, "cheap_reviewer", {
         role: "cheap_reviewer",
         model: CHEAP_MODEL,
         prompt: buildReviewPrompt(input, "cheap-first reviewer")
       });
-      const verifier = await executeCall(state, provider, {
+      const verifier = await executeCall(state, provider, "verifier", {
         role: "verifier",
         model: CHEAP_MODEL,
         prompt: `Grade this review confidence from 0 to 1 and explain whether escalation is needed:\n${cheap.response}`
@@ -96,7 +104,7 @@ export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise
         finalAnswer = cheap.response;
         escalationReason = `Cost limit prevented escalation after verifier confidence ${confidence.toFixed(2)}.`;
       } else if (confidence < ESCALATION_CONFIDENCE_THRESHOLD) {
-        const strong = await executeCall(state, provider, {
+        const strong = await executeCall(state, provider, "strong_reviewer", {
           role: "strong_reviewer",
           model: STRONG_MODEL,
           prompt: buildReviewPrompt(input, "escalated strong reviewer")
@@ -108,26 +116,28 @@ export async function runWorkflow({ input, provider }: RunWorkflowArgs): Promise
         finalAnswer = cheap.response;
         escalationReason = `Verifier confidence ${confidence.toFixed(2)} met the threshold.`;
       }
+
+      onEvent?.({ type: "escalation", escalated, reason: escalationReason ?? "" });
     }
 
     if (input.workflow === "planner_worker_verifier") {
       assertWithinProjectedCostLimit(input.costLimitUsd, CHEAP_MODEL, 4, state.calls);
-      const planner = await executeCall(state, provider, {
+      const planner = await executeCall(state, provider, "planner", {
         role: "planner",
         model: CHEAP_MODEL,
         prompt: `Plan a code review for this task:\n${input.prompt}\n\n${input.code}`
       });
-      const worker = await executeCall(state, provider, {
+      const worker = await executeCall(state, provider, "worker", {
         role: "worker",
         model: CHEAP_MODEL,
         prompt: `Use this plan to inspect the code:\n${planner.response}\n\n${input.code}`
       });
-      const verifier = await executeCall(state, provider, {
+      const verifier = await executeCall(state, provider, "verifier", {
         role: "verifier",
         model: CHEAP_MODEL,
         prompt: `Attack this answer for missed bugs and weak claims:\n${worker.response}`
       });
-      const finalizer = await executeCall(state, provider, {
+      const finalizer = await executeCall(state, provider, "finalizer", {
         role: "finalizer",
         model: CHEAP_MODEL,
         prompt: `Produce the final report from worker and verifier notes:\n${worker.response}\n\n${verifier.response}`
@@ -185,12 +195,27 @@ function validateRunInput(input: RunInput): void {
 async function executeCall(
   state: CallState,
   provider: ModelProvider,
+  nodeId: string,
   request: ModelRequest
 ): Promise<ModelCallTrace> {
+  const stepId = makeStepId(state);
+  state.onEvent?.({ type: "step-start", stepId, nodeId, role: request.role, model: request.model });
+
   try {
     const response = await provider.complete(request);
     const trace = toCallTrace(request, response, makeId("call"));
     state.calls.push(trace);
+    state.onEvent?.({
+      type: "step-finish",
+      stepId,
+      nodeId,
+      role: request.role,
+      model: request.model,
+      usage: trace.usage,
+      costUsd: trace.estimatedCostUsd,
+      latencyMs: trace.latencyMs,
+      responsePreview: trace.response.slice(0, RESPONSE_PREVIEW_LENGTH)
+    });
     return trace;
   } catch (error) {
     const trace: ModelCallTrace = {
@@ -211,6 +236,29 @@ async function executeCall(
     state.calls.push(trace);
     throw error;
   }
+}
+
+function emitRunInit(workflow: WorkflowKind, onEvent: WorkflowEventHandler | undefined): void {
+  if (!onEvent) {
+    return;
+  }
+
+  const graph = buildWorkflowGraph(workflow);
+  const plannedSteps = graph.nodes
+    .filter((node): node is typeof node & { role: ModelRole } => node.role !== undefined)
+    .map((node) => ({
+      stepId: `planned_${node.id}`,
+      nodeId: node.id,
+      role: node.role,
+      model: node.role === "strong_reviewer" ? STRONG_MODEL : CHEAP_MODEL
+    }));
+
+  onEvent({ type: "run-init", workflow, graph, plannedSteps });
+}
+
+function makeStepId(state: CallState): string {
+  state.stepCounter += 1;
+  return `step_${state.stepCounter}`;
 }
 
 function buildReviewPrompt(input: RunInput, role: string): string {
