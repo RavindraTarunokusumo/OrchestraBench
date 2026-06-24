@@ -26,6 +26,8 @@ Completed sessions must be moved to `docs/iterations/archive/`.
 
 ## Future Backlog
 
+- file-store cross-process write race: `writeData` uses a temp-file rename guarded only by an in-process `mutationQueue`, so concurrent processes (e.g. parallel Vitest workers) can hit EPERM on Windows. Tests currently run with `fileParallelism: false`; consider per-process data dirs or atomic-write hardening if Windows CI parallelism is reintroduced.
+
 - Add evaluation harness (Braintrust/LangSmith/etc.)
 - Export results
 - Human feedback UI
