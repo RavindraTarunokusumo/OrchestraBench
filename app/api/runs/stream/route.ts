@@ -23,7 +23,12 @@ export async function POST(request: Request) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const send = (event: WorkflowEvent) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        } catch {
+          // Client disconnected; the controller is closed. Stop emitting — the
+          // workflow still runs to completion and persists server-side.
+        }
       };
 
       try {
@@ -50,7 +55,11 @@ export async function POST(request: Request) {
           message: error instanceof Error ? error.message : "Unexpected workflow failure."
         });
       } finally {
-        controller.close();
+        try {
+          controller.close();
+        } catch {
+          // Already closed (e.g. client disconnected mid-run).
+        }
       }
     }
   });
