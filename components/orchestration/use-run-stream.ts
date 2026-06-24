@@ -228,6 +228,8 @@ export function useRunStream(): UseRunStreamResult {
   }, []);
 
   const applyEvent = useCallback((event: WorkflowEvent) => {
+    if (!mountedRef.current) return;
+
     if (event.type === "step-start") {
       activeSinceRef.current.set(event.nodeId, Date.now());
       const existingTimer = pendingTimersRef.current.get(event.nodeId);
@@ -316,6 +318,10 @@ export function useRunStream(): UseRunStreamResult {
 
         try {
           while (true) {
+            if (!mountedRef.current) {
+              await reader.cancel().catch(() => undefined);
+              break;
+            }
             const { done, value } = await reader.read();
             if (done) break;
             buffer += decoder.decode(value, { stream: true });
