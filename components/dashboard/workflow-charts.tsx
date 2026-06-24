@@ -14,6 +14,11 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
  */
 const renderTooltip = ChartTooltipContent as unknown as React.ComponentProps<typeof ChartTooltip>["content"];
 
+// Value scores can reach into the tens of thousands; compact the axis ticks
+// (e.g. 50000 -> "50K") so the labels are not clipped by the axis width.
+const compactNumber = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
+const formatCompact = (value: number) => compactNumber.format(value);
+
 export type WorkflowChartRow = {
   workflow: string;
   quality: number;
@@ -43,7 +48,7 @@ export function WorkflowCharts({ rows }: { rows: WorkflowChartRow[] }) {
             <BarChart data={rows} margin={{ left: 0, right: 8 }}>
               <CartesianGrid vertical={false} />
               <XAxis dataKey="workflow" tickLine={false} axisLine={false} tickMargin={8} fontSize={11} />
-              <YAxis tickLine={false} axisLine={false} width={32} fontSize={11} />
+              <YAxis tickLine={false} axisLine={false} width={44} fontSize={11} tickFormatter={formatCompact} />
               <ChartTooltip content={renderTooltip} />
               <Bar dataKey="value" fill="var(--color-value)" radius={4} />
             </BarChart>
