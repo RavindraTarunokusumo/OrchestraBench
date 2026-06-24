@@ -13,7 +13,7 @@ Completed sessions must be moved to `docs/iterations/archive/`.
   - [x] Phase 4 — `OrchestrationCanvas` (GSAP) + `useRunStream` hook (live + static modes). (f0e3f7d)
   - [x] Phase 5 — New Run page live integration (in-place canvas, inline summary, link to detail). (90dec96)
   - [x] Phase 6 — Home landing/overview page (replace redirect). (60cc60f)
-  - [ ] Phase 7 — Dashboard charts (recharts) + empty/loading states + Run Detail static replay.
+  - [x] Phase 7 — Dashboard charts (recharts) + empty/loading states + Run Detail static replay. (8e4b660, 71663f6, 98f81f0, fe7e58c, 81e0569)
   - Deferred: dedicated `/workflows` guide page (later session).
 
 - [ ] MVP implementation from `SPEC.md`
