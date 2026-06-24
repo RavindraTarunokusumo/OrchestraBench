@@ -6,6 +6,16 @@ Completed sessions must be moved to `docs/iterations/archive/`.
 
 ## Backlog
 
+- [ ] UI overhaul + live orchestration view (spec: `docs/superpowers/specs/2026-06-23-ui-overhaul-orchestration-view-design.md`)
+  - [x] Phase 1 — Tailwind v4 + shadcn/ui foundation, light/dark theming (next-themes), polished top nav. (894af25)
+  - [x] Phase 2 — Workflow graph builder + streaming event types + `runWorkflow` `onEvent` refactor (callers unchanged). (7a20a7a)
+  - [x] Phase 3 — `POST /api/runs/stream` route handler (SSE, validate, persist, emit run-final). (79349dc)
+  - [x] Phase 4 — `OrchestrationCanvas` (GSAP) + `useRunStream` hook (live + static modes). (f0e3f7d)
+  - [x] Phase 5 — New Run page live integration (in-place canvas, inline summary, link to detail). (90dec96)
+  - [x] Phase 6 — Home landing/overview page (replace redirect). (60cc60f)
+  - [x] Phase 7 — Dashboard charts (recharts) + empty/loading states + Run Detail static replay. (8e4b660, 71663f6, 98f81f0, fe7e58c, 81e0569)
+  - Deferred: dedicated `/workflows` guide page (later session).
+
 - [ ] MVP implementation from `SPEC.md`
   - [x] Shared foundation: Next.js/TypeScript app scaffold, Prisma schema, provider contracts, tests, and local env docs.
   - [x] Milestone 1 — Baseline Runner: single cheap/strong workflows and run detail page.
@@ -15,6 +25,11 @@ Completed sessions must be moved to `docs/iterations/archive/`.
   - [x] Milestone 5 — Dataset Mode: benchmark task CRUD, seeded examples, reruns, and JSON export.
 
 ## Future Backlog
+
+- file-store cross-process write race: `writeData` uses a temp-file rename guarded only by an in-process `mutationQueue`, so concurrent processes (e.g. parallel Vitest workers) can hit EPERM on Windows. Tests currently run with `fileParallelism: false`; consider per-process data dirs or atomic-write hardening if Windows CI parallelism is reintroduced.
+- `OrchestrationCanvas` GSAP effect depends on the whole `nodeStates` object, so the `gsap.context` is reverted/rebuilt (incl. `querySelectorAll` + `getTotalLength` forced reflow) on every stream event, restarting active-node pulses. Narrow to a per-node tween model keyed on status/flowing signature so unrelated nodes don't re-pulse. (Code-review medium, deferred.)
+- Centralize SSE wire framing: the `data: …\n\n` encoder in `app/api/runs/stream/route.ts` and the `parseSseChunk` decoder in `use-run-stream.ts` are independent literals. Extract a shared `encode/decode` module. (Code-review medium, deferred.)
+- Add a shared `formatCostUsd`/score formatter (lib/utils) — cost/quality/value formatting is duplicated across home, dashboard, new-run, and run-detail. (Code-review medium, deferred.)
 
 - Add evaluation harness (Braintrust/LangSmith/etc.)
 - Export results

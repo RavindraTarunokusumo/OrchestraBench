@@ -1,7 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { feedbackAction } from "@/app/actions";
+import { OrchestrationCanvas } from "@/components/orchestration/canvas";
+import { deriveNodeStatesFromCalls } from "@/components/orchestration/derive-node-states";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { getRun } from "@/lib/store/file-store";
+import { buildWorkflowGraph } from "@/lib/workflows/graph";
+import { workflowLabel } from "@/lib/workflows/labels";
 
 export default async function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,118 +21,151 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
     notFound();
   }
 
+  const graph = buildWorkflowGraph(run.workflow);
+  const nodeStates = deriveNodeStatesFromCalls(graph, run);
+
   return (
-    <main className="container">
-      <div className="page-title">
+    <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1>{run.title}</h1>
-          <p>
-            {run.workflow} · {run.providerLabel} · {run.status}
+          <h1 className="text-2xl font-semibold tracking-tight">{run.title}</h1>
+          <p className="text-muted-foreground">
+            {workflowLabel(run.workflow)} · {run.providerLabel} · {run.status}
           </p>
         </div>
-        <Link className="button" href="/dashboard">
-          Compare workflows
-        </Link>
+        <Button asChild variant="outline">
+          <Link href="/dashboard">Compare workflows</Link>
+        </Button>
       </div>
 
-      <section className="grid three">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Metric label="Quality" value={run.evaluation.qualityScore.toFixed(1)} />
         <Metric label="Value" value={run.evaluation.valueScore.toFixed(1)} />
         <Metric label="Cost" value={`$${run.costUsd.toFixed(4)}`} />
-      </section>
+      </div>
 
-      <section className="grid two" style={{ marginTop: 16 }}>
-        <article className="panel stack">
-          <div>
-            <span className={run.escalated ? "badge warning" : "badge"}>
-              {run.escalated ? "Escalated" : "No escalation"}
-            </span>
-            {run.escalationReason ? <p className="muted">{run.escalationReason}</p> : null}
-          </div>
-          <h2>Final answer</h2>
-          <p>{run.finalAnswer}</p>
-          <h2>Findings</h2>
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Finding</th>
-                <th>Severity</th>
-                <th>Confidence</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {run.findings.map((finding) => (
-                <tr key={finding.id}>
-                  <td>
-                    <strong>{finding.title}</strong>
-                    <br />
-                    <span className="muted">{finding.description}</span>
-                  </td>
-                  <td>{finding.severity}</td>
-                  <td>{Math.round(finding.confidence * 100)}%</td>
-                  <td>{finding.sourceRole}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </article>
+      <Card>
+        <CardHeader>
+          <CardTitle>Orchestration replay</CardTitle>
+          <CardDescription>Static replay of the saved model-call trace for this run.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <OrchestrationCanvas graph={graph} nodeStates={nodeStates} status={mapRunStatus(run.status)} mode="static" />
+        </CardContent>
+      </Card>
 
-        <aside className="panel stack">
-          <h2>Evaluation</h2>
-          <div className="metric-row">
-            <Metric label="TP" value={run.evaluation.truePositives} />
-            <Metric label="FP" value={run.evaluation.falsePositives} />
-            <Metric label="Missed" value={run.evaluation.missedKnownBugs} />
-            <Metric label="Judge" value={`${Math.round(run.evaluation.judgeConfidence * 100)}%`} />
-          </div>
-          <form action={feedbackAction} className="form-grid">
-            <input type="hidden" name="runId" value={run.id} />
-            <div className="field">
-              <label htmlFor="userRating">Human rating</label>
-              <select id="userRating" name="userRating" defaultValue={run.evaluation.userRating ?? ""}>
-                <option value="">No rating</option>
-                <option value="1">1 - poor</option>
-                <option value="2">2</option>
-                <option value="3">3 - useful</option>
-                <option value="4">4</option>
-                <option value="5">5 - excellent</option>
-              </select>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Badge variant={run.escalated ? "secondary" : "outline"}>
+                {run.escalated ? "Escalated" : "No escalation"}
+              </Badge>
             </div>
-            <div className="field">
-              <label htmlFor="notes">Feedback notes</label>
-              <textarea id="notes" name="notes" defaultValue={run.evaluation.notes ?? ""} />
+            {run.escalationReason && <CardDescription>{run.escalationReason}</CardDescription>}
+            <CardTitle>Final answer</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm">{run.finalAnswer}</p>
+            <div>
+              <h3 className="mb-2 text-sm font-medium">Findings</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Finding</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Confidence</TableHead>
+                    <TableHead>Source</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {run.findings.map((finding) => (
+                    <TableRow key={finding.id}>
+                      <TableCell>
+                        <span className="font-medium">{finding.title}</span>
+                        <p className="text-muted-foreground text-sm">{finding.description}</p>
+                      </TableCell>
+                      <TableCell>{finding.severity}</TableCell>
+                      <TableCell>{Math.round(finding.confidence * 100)}%</TableCell>
+                      <TableCell>{finding.sourceRole}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-            <button className="button primary" type="submit">
-              Save feedback
-            </button>
-          </form>
-        </aside>
-      </section>
+          </CardContent>
+        </Card>
 
-      <section className="panel stack" style={{ marginTop: 16 }}>
-        <h2>Model-call trace</h2>
-        {run.calls.map((call) => (
-          <article className="card stack" key={call.id}>
-            <div className="trace-row">
-              <strong>{call.role}</strong>
-              <span>{call.model}</span>
-              <span>${call.estimatedCostUsd.toFixed(4)}</span>
-              <span>{call.latencyMs} ms</span>
+        <Card>
+          <CardHeader>
+            <CardTitle>Evaluation</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Metric label="TP" value={run.evaluation.truePositives} />
+              <Metric label="FP" value={run.evaluation.falsePositives} />
+              <Metric label="Missed" value={run.evaluation.missedKnownBugs} />
+              <Metric label="Judge" value={`${Math.round(run.evaluation.judgeConfidence * 100)}%`} />
             </div>
-            <pre className="code">{call.response}</pre>
-          </article>
-        ))}
-      </section>
+            <form action={feedbackAction} className="flex flex-col gap-4">
+              <input type="hidden" name="runId" value={run.id} />
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="userRating">Human rating</Label>
+                <Select name="userRating" defaultValue={run.evaluation.userRating?.toString() ?? "none"}>
+                  <SelectTrigger id="userRating" className="w-full">
+                    <SelectValue placeholder="No rating" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No rating</SelectItem>
+                    <SelectItem value="1">1 - poor</SelectItem>
+                    <SelectItem value="2">2</SelectItem>
+                    <SelectItem value="3">3 - useful</SelectItem>
+                    <SelectItem value="4">4</SelectItem>
+                    <SelectItem value="5">5 - excellent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="notes">Feedback notes</Label>
+                <Textarea id="notes" name="notes" defaultValue={run.evaluation.notes ?? ""} />
+              </div>
+              <Button type="submit">Save feedback</Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Model-call trace</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {run.calls.map((call) => (
+            <article key={call.id} className="flex flex-col gap-2 rounded-lg border p-4">
+              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                <span className="font-medium">{call.role}</span>
+                <span className="text-muted-foreground">{call.model}</span>
+                <span className="text-muted-foreground">${call.estimatedCostUsd.toFixed(4)}</span>
+                <span className="text-muted-foreground">{call.latencyMs} ms</span>
+              </div>
+              <pre className="bg-muted overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap">{call.response}</pre>
+            </article>
+          ))}
+        </CardContent>
+      </Card>
     </main>
   );
 }
 
+function mapRunStatus(status: string): "complete" | "failed" {
+  return status === "completed" ? "complete" : "failed";
+}
+
 function Metric({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="metric">
-      <span className="label">{label}</span>
-      <strong>{value}</strong>
+    <div className="bg-muted/50 rounded-lg p-3">
+      <span className="text-muted-foreground text-xs font-medium">{label}</span>
+      <p className="text-xl font-semibold">{value}</p>
     </div>
   );
 }
