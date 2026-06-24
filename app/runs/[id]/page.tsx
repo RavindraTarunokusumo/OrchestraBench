@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { getRun } from "@/lib/store/file-store";
 import { buildWorkflowGraph } from "@/lib/workflows/graph";
+import { workflowLabel } from "@/lib/workflows/labels";
 
 export default async function RunDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -29,7 +30,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{run.title}</h1>
           <p className="text-muted-foreground">
-            {run.workflow} · {run.providerLabel} · {run.status}
+            {workflowLabel(run.workflow)} · {run.providerLabel} · {run.status}
           </p>
         </div>
         <Button asChild variant="outline">
@@ -110,11 +111,12 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
               <input type="hidden" name="runId" value={run.id} />
               <div className="flex flex-col gap-2">
                 <Label htmlFor="userRating">Human rating</Label>
-                <Select name="userRating" defaultValue={run.evaluation.userRating?.toString() ?? ""}>
+                <Select name="userRating" defaultValue={run.evaluation.userRating?.toString() ?? "none"}>
                   <SelectTrigger id="userRating" className="w-full">
                     <SelectValue placeholder="No rating" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">No rating</SelectItem>
                     <SelectItem value="1">1 - poor</SelectItem>
                     <SelectItem value="2">2</SelectItem>
                     <SelectItem value="3">3 - useful</SelectItem>

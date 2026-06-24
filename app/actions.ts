@@ -16,7 +16,8 @@ const optionalPositiveNumber = z.preprocess(
   z.coerce.number().positive().optional()
 );
 const optionalRating = z.preprocess(
-  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  // "none" is the form's explicit "clear rating" sentinel (Radix Select cannot use "").
+  (value) => (value === "" || value === "none" || value === null || value === undefined ? undefined : value),
   z.coerce.number().min(1).max(5).optional()
 );
 const optionalTrimmedString = z.preprocess(
