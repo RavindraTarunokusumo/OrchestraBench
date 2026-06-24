@@ -72,6 +72,28 @@ describe("deriveNodeStatesFromCalls", () => {
     expect(nodeStates.result).toMatchObject({ status: "done" });
   });
 
+  it("maps panelist calls by nodeId even when the array order is completion order, not launch order", () => {
+    const graph = buildWorkflowGraph("panel_judge");
+    const run = makeRun({
+      workflow: "panel_judge",
+      // Array order is completion order under Promise.all: panelist-2 finished first,
+      // but each call carries the nodeId it was launched with, which must win.
+      calls: [
+        makeCall("panelist", { id: "call_p2", model: "model-b", nodeId: "panelist-2" }),
+        makeCall("panelist", { id: "call_p1", model: "model-a", nodeId: "panelist-1" }),
+        makeCall("panelist", { id: "call_p3", model: "model-c", nodeId: "panelist-3" }),
+        makeCall("judge", { id: "call_judge", nodeId: "judge" })
+      ]
+    });
+
+    const nodeStates = deriveNodeStatesFromCalls(graph, run);
+
+    expect(nodeStates["panelist-1"]).toMatchObject({ status: "done", model: "model-a" });
+    expect(nodeStates["panelist-2"]).toMatchObject({ status: "done", model: "model-b" });
+    expect(nodeStates["panelist-3"]).toMatchObject({ status: "done", model: "model-c" });
+    expect(nodeStates.judge).toMatchObject({ status: "done" });
+  });
+
   it("leaves strong_reviewer pending for cheap_first when no escalation happened", () => {
     const graph = buildWorkflowGraph("cheap_first");
     const run = makeRun({

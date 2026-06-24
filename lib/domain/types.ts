@@ -71,6 +71,8 @@ export type ModelCallTrace = {
   estimatedCostUsd: number;
   latencyMs: number;
   error?: string;
+  /** Graph node this call was bound to at launch time; authoritative for static replay ordering. */
+  nodeId?: string;
 };
 
 export type RunInput = {

@@ -204,6 +204,7 @@ async function executeCall(
   try {
     const response = await provider.complete(request);
     const trace = toCallTrace(request, response, makeId("call"));
+    trace.nodeId = nodeId;
     state.calls.push(trace);
     state.onEvent?.({
       type: "step-finish",
@@ -231,7 +232,8 @@ async function executeCall(
       },
       estimatedCostUsd: 0,
       latencyMs: 0,
-      error: error instanceof Error ? error.message : "Unknown provider failure."
+      error: error instanceof Error ? error.message : "Unknown provider failure.",
+      nodeId
     };
     state.calls.push(trace);
     throw error;
