@@ -165,6 +165,14 @@ describe("reduceStreamEvent", () => {
     expect(next.nodeStates.result.status).toBe("done");
     expect(next.totals.costUsd).toBe(0.01);
     expect(next.totals.latencyMs).toBe(2000);
+    expect(next.finalSummary).toEqual({
+      status: "completed",
+      costUsd: 0.01,
+      latencyMs: 2000,
+      findingsCount: 3,
+      qualityScore: 0.8,
+      valueScore: 0.7
+    });
   });
 
   it("run-final with status failed marks status failed but still sets finalRunId (run was persisted)", () => {
@@ -184,6 +192,7 @@ describe("reduceStreamEvent", () => {
     expect(next.status).toBe("failed");
     expect(next.finalRunId).toBe("run_failed_1");
     expect(next.nodeStates.result.status).toBe("failed");
+    expect(next.finalSummary?.status).toBe("failed");
   });
 
   it("run-error sets status error and the message, with no runId", () => {

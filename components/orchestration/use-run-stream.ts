@@ -27,6 +27,15 @@ export type RunStreamTotals = {
 
 export type RunStreamStatus = "idle" | "running" | "complete" | "failed" | "error";
 
+export type RunFinalSummary = {
+  status: RunStatus;
+  costUsd: number;
+  latencyMs: number;
+  findingsCount: number;
+  qualityScore: number;
+  valueScore: number;
+};
+
 export type RunStreamState = {
   status: RunStreamStatus;
   graph: WorkflowGraph | null;
@@ -34,6 +43,7 @@ export type RunStreamState = {
   totals: RunStreamTotals;
   escalation: { escalated: boolean; reason: string } | null;
   finalRunId: string | null;
+  finalSummary: RunFinalSummary | null;
   error: string | null;
 };
 
@@ -53,6 +63,7 @@ export const initialRunStreamState: RunStreamState = {
   totals: ZERO_TOTALS,
   escalation: null,
   finalRunId: null,
+  finalSummary: null,
   error: null
 };
 
@@ -80,6 +91,7 @@ export function reduceStreamEvent(prev: RunStreamState, event: WorkflowEvent): R
         totals: { ...ZERO_TOTALS, stepsTotal: event.plannedSteps.length },
         escalation: null,
         finalRunId: null,
+        finalSummary: null,
         error: null
       };
     }
@@ -133,6 +145,14 @@ export function reduceStreamEvent(prev: RunStreamState, event: WorkflowEvent): R
         ...prev,
         status: runFailed ? "failed" : "complete",
         finalRunId: event.runId,
+        finalSummary: {
+          status: event.status,
+          costUsd: event.costUsd,
+          latencyMs: event.latencyMs,
+          findingsCount: event.findingsCount,
+          qualityScore: event.qualityScore,
+          valueScore: event.valueScore
+        },
         nodeStates,
         totals: {
           ...prev.totals,
