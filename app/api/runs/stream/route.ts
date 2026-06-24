@@ -41,6 +41,10 @@ export async function POST(request: Request) {
           valueScore: saved.evaluation.valueScore
         });
       } catch (error) {
+        // runWorkflow catches in-workflow failures internally and resolves a
+        // status:"failed" RunResult (surfaced below as run-final). This catch only
+        // covers errors outside the workflow itself, e.g. createConfiguredProvider
+        // throwing or saveRun/persistence failing.
         send({
           type: "run-error",
           message: error instanceof Error ? error.message : "Unexpected workflow failure."
