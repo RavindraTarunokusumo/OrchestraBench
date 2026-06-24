@@ -11,7 +11,7 @@ Completed sessions must be moved to `docs/iterations/archive/`.
   - [x] Phase 2 — Workflow graph builder + streaming event types + `runWorkflow` `onEvent` refactor (callers unchanged). (7a20a7a)
   - [x] Phase 3 — `POST /api/runs/stream` route handler (SSE, validate, persist, emit run-final). (79349dc)
   - [x] Phase 4 — `OrchestrationCanvas` (GSAP) + `useRunStream` hook (live + static modes). (f0e3f7d)
-  - [ ] Phase 5 — New Run page live integration (in-place canvas, inline summary, link to detail).
+  - [x] Phase 5 — New Run page live integration (in-place canvas, inline summary, link to detail). (90dec96)
   - [ ] Phase 6 — Home landing/overview page (replace redirect).
   - [ ] Phase 7 — Dashboard charts (recharts) + empty/loading states + Run Detail static replay.
   - Deferred: dedicated `/workflows` guide page (later session).
