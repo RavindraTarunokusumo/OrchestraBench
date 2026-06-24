@@ -151,3 +151,94 @@ This sidesteps pinning to either side's specific generic parameters and typechec
   them to an explicit `pending` entry — this relies on `OrchestrationCanvas`'s existing
   default-state fallback behavior, which was confirmed (not modified) to already handle
   missing map entries correctly.
+
+## Final-review fixes
+
+Commits:
+- `2dd8f91` fix: make static orchestration replay node mapping order-independent
+- `851fd2c` docs+test: clarify run-error scope and exercise POST handler directly
+
+### Finding 1 — order-independent static replay mapping
+
+Root cause: `panel_judge` launches its three panelist calls via `Promise.all`, so
+`run.calls` is in completion order, not launch order. The old `deriveNodeStatesFromCalls`
+consumed calls per-role left-to-right (a FIFO), so with a real provider where panelist-2
+finishes before panelist-1, the response would land under the wrong graph node
+(`panelist-1`) in the persisted/static Run Detail replay. The live SSE path was already
+correct because `executeCall` binds `nodeId` via closure when emitting `step-start`/
+`step-finish`.
+
+nodeId threading approach:
+- Added optional `nodeId?: string` to `ModelCallTrace` (`lib/domain/types.ts`).
+- `lib/workflows/runner.ts`'s `executeCall` already receives `nodeId` as a parameter.
+  On the success path, `trace.nodeId = nodeId` is set right after `toCallTrace()` builds
+  the trace (left `toCallTrace` itself untouched in `lib/providers/types.ts` since the
+  caller already has the value and a constructor-arg change would touch more call
+  sites for no benefit). On the catch/error path, `nodeId` is included directly in the
+  hand-built error trace literal.
+- `components/orchestration/derive-node-states.ts` now builds a `Map<nodeId, call>`
+  from any call carrying a `nodeId` (authoritative, direct match) and only consults the
+  legacy role-order FIFO queue for calls without one, so older persisted runs (saved
+  before this change) still render via the previous fallback behavior.
+
+Tests added/kept green:
+- `tests/derive-node-states.test.ts`: added
+  `"maps panelist calls by nodeId even when the array order is completion order, not launch order"`
+  — constructs calls in array order `panelist-2, panelist-1, panelist-3, judge` but
+  with correct `nodeId`s, and asserts each lands on its correct graph node despite the
+  out-of-order array. All 5 pre-existing cases (including the role-order fallback ones,
+  which omit `nodeId`) still pass unmodified.
+- `tests/runner-events.test.ts`: no assertions touch trace shape directly (only
+  step-event nodeId/stepId), so all 12 cases passed unmodified — confirmed by running
+  the file after the runner change.
+
+### Finding 2 — run-error scope comment
+
+Added a 3-line comment in `app/api/runs/stream/route.ts` directly above the
+`run-error` `send(...)` call in the `catch` block, explaining that `runWorkflow`
+already catches in-workflow failures internally and resolves a `status:"failed"`
+`RunResult` (which surfaces as `run-final`), so this `catch` only covers errors
+raised outside the workflow call itself (e.g. `createConfiguredProvider` throwing,
+or `saveRun` persistence failing). No behavioral change — comment only.
+
+### Finding 3 — exercise the real POST handler
+
+Added a new file, `tests/stream-route-handler.test.ts` (left `tests/stream-route.test.ts`
+untouched, per the constraint), which imports `POST` from
+`@/app/api/runs/stream/route` and invokes it directly:
+- `"streams run-init followed by a terminal run-final for a valid run request"` —
+  builds a real `Request` with a valid JSON body, awaits `POST(req)`, asserts
+  `response.status === 200` and `Content-Type: text/event-stream`, reads the full
+  response body text, splits it into SSE `data:` lines, and asserts the first parsed
+  event is `run-init` and the last is a `run-final` with `status: "completed"`.
+- `"returns 400 without opening a stream when the body is invalid"` — posts a body
+  missing `code`, asserts `response.status === 200` is *not* hit (`400` instead) and
+  `Content-Type` is not `text/event-stream`, then parses the JSON error body and
+  asserts an `error` message is present.
+
+No `OPENROUTER_API_KEY` is set in the test environment, so `createConfiguredProvider()`
+resolves to the mock provider — no network calls are made. This was feasible to invoke
+directly; no fallback was needed. One pre-existing flake was observed when running
+`tests/stream-route.test.ts` and the new file together via a hand-picked `npx vitest run
+<file> <file>` invocation (a `.data/orchestrabench.json` rename `EPERM` from two test
+files racing on the same on-disk store under Windows); it did not reproduce under the
+project's actual `npm test` gate or when run in isolation, so it is noted as a pre-existing
+file-store contention risk under Windows, not a regression from this change.
+
+### Verification tails
+
+```
+npm run lint
+✔ No ESLint warnings or errors
+
+npx tsc --noEmit
+(clean, no output)
+
+npm test
+ Test Files  9 passed (9)
+      Tests  58 passed (58)
+
+npm run build
+✓ Compiled successfully in 6.6s
+✓ Generating static pages (11/11)
+```
