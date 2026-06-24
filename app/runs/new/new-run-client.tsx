@@ -84,10 +84,8 @@ export function NewRunClient() {
             <CardTitle className="text-destructive">Run failed to start</CardTitle>
             <CardDescription>{error}</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button variant="outline" onClick={() => setValidationError(null)} type="button">
-              Dismiss and retry below
-            </Button>
+          <CardContent className="text-sm text-muted-foreground">
+            Adjust the form below and submit again to retry.
           </CardContent>
         </Card>
       )}
