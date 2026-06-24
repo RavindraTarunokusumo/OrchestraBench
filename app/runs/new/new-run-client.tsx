@@ -11,14 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
-
-const workflowLabels: Record<WorkflowKind, string> = {
-  single_cheap: "Single Cheap Model",
-  single_strong: "Single Strong Model",
-  panel_judge: "Panel + Judge",
-  cheap_first: "Cheap-First Escalation",
-  planner_worker_verifier: "Planner → Worker → Verifier"
-};
+import { workflowLabels } from "@/lib/workflows/labels";
 
 const DEFAULTS = {
   title: "Review auth helper",
