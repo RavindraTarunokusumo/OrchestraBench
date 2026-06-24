@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { rerunDatasetAction } from "@/app/actions";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { workflowKinds } from "@/lib/domain/types";
 import { getDataset, listRuns } from "@/lib/store/file-store";
 
@@ -13,66 +18,96 @@ export default async function DatasetDetailPage({ params }: { params: Promise<{ 
   const relatedRuns = (await listRuns()).filter((run) => run.benchmarkTaskId === task.id);
 
   return (
-    <main className="container">
-      <div className="page-title">
+    <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1>{task.title}</h1>
-          <p>
+          <h1 className="text-2xl font-semibold tracking-tight">{task.title}</h1>
+          <p className="text-muted-foreground">
             {task.language} · {task.tags.join(", ") || "untagged"}
           </p>
         </div>
-        <Link className="button" href="/datasets">
-          Back to datasets
-        </Link>
+        <Button asChild variant="outline">
+          <Link href="/datasets">Back to datasets</Link>
+        </Button>
       </div>
 
-      <section className="grid two">
-        <article className="panel stack">
-          <h2>Task</h2>
-          <p>{task.prompt}</p>
-          <pre className="code">{task.code}</pre>
-          <h2>Known bugs</h2>
-          {task.knownBugs.map((bug) => (
-            <div className="card" key={bug.id}>
-              <strong>{bug.title}</strong>
-              <p className="muted">
-                {bug.severity} · {bug.description}
-              </p>
-            </div>
-          ))}
-        </article>
-
-        <aside className="panel stack">
-          <h2>Rerun workflows</h2>
-          <form action={rerunDatasetAction} className="form-grid">
-            <input type="hidden" name="taskId" value={task.id} />
-            <div className="checkbox-grid">
-              {workflowKinds.map((workflow) => (
-                <label className="checkbox" key={workflow}>
-                  <input type="checkbox" name="workflows" value={workflow} defaultChecked />
-                  <span>{workflow}</span>
-                </label>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Task</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm">{task.prompt}</p>
+            <pre className="bg-muted overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap">{task.code}</pre>
+            <h3 className="text-sm font-medium">Known bugs</h3>
+            <div className="flex flex-col gap-2">
+              {task.knownBugs.map((bug) => (
+                <Card key={bug.id}>
+                  <CardHeader>
+                    <CardTitle className="text-base">{bug.title}</CardTitle>
+                    <CardDescription>
+                      {bug.severity} · {bug.description}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
               ))}
             </div>
-            <div className="field">
-              <label htmlFor="costLimitUsd">Cost limit USD</label>
-              <input id="costLimitUsd" name="costLimitUsd" type="number" step="0.0001" min="0" />
-            </div>
-            <button className="button primary" type="submit">
-              Rerun selected
-            </button>
-          </form>
+          </CardContent>
+        </Card>
 
-          <h2>Related runs</h2>
-          {relatedRuns.length === 0 ? <p className="muted">No reruns yet.</p> : null}
-          {relatedRuns.map((run) => (
-            <Link className="card" key={run.id} href={`/runs/${run.id}`}>
-              <strong>{run.workflow}</strong>
-              <p className="muted">Value {run.evaluation.valueScore.toFixed(1)}</p>
-            </Link>
-          ))}
-        </aside>
-      </section>
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Rerun workflows</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form action={rerunDatasetAction} className="flex flex-col gap-4">
+                <input type="hidden" name="taskId" value={task.id} />
+                <div className="grid grid-cols-2 gap-2">
+                  {workflowKinds.map((workflow) => (
+                    <label
+                      key={workflow}
+                      className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm"
+                    >
+                      <input type="checkbox" name="workflows" value={workflow} defaultChecked className="size-4" />
+                      <span>{workflow}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="costLimitUsd">Cost limit USD</Label>
+                  <Input id="costLimitUsd" name="costLimitUsd" type="number" step="0.0001" min="0" />
+                </div>
+                <Button type="submit">Rerun selected</Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Related runs</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2">
+              {relatedRuns.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No reruns yet.</p>
+              ) : (
+                relatedRuns.map((run) => (
+                  <Link key={run.id} href={`/runs/${run.id}`} className="group">
+                    <Card className="transition-colors group-hover:border-primary">
+                      <CardHeader>
+                        <div className="flex items-center justify-between gap-2">
+                          <CardTitle className="text-base">{run.workflow}</CardTitle>
+                          <Badge variant="outline">Value {run.evaluation.valueScore.toFixed(1)}</Badge>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </main>
   );
 }
