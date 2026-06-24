@@ -27,6 +27,9 @@ Completed sessions must be moved to `docs/iterations/archive/`.
 ## Future Backlog
 
 - file-store cross-process write race: `writeData` uses a temp-file rename guarded only by an in-process `mutationQueue`, so concurrent processes (e.g. parallel Vitest workers) can hit EPERM on Windows. Tests currently run with `fileParallelism: false`; consider per-process data dirs or atomic-write hardening if Windows CI parallelism is reintroduced.
+- `OrchestrationCanvas` GSAP effect depends on the whole `nodeStates` object, so the `gsap.context` is reverted/rebuilt (incl. `querySelectorAll` + `getTotalLength` forced reflow) on every stream event, restarting active-node pulses. Narrow to a per-node tween model keyed on status/flowing signature so unrelated nodes don't re-pulse. (Code-review medium, deferred.)
+- Centralize SSE wire framing: the `data: …\n\n` encoder in `app/api/runs/stream/route.ts` and the `parseSseChunk` decoder in `use-run-stream.ts` are independent literals. Extract a shared `encode/decode` module. (Code-review medium, deferred.)
+- Add a shared `formatCostUsd`/score formatter (lib/utils) — cost/quality/value formatting is duplicated across home, dashboard, new-run, and run-detail. (Code-review medium, deferred.)
 
 - Add evaluation harness (Braintrust/LangSmith/etc.)
 - Export results
