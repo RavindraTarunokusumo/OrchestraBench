@@ -9,7 +9,7 @@ Completed sessions must be moved to `docs/iterations/archive/`.
 - [ ] Benchmark ingestion + code-repair mode — Phase 1 (spec: `docs/superpowers/specs/2026-06-26-benchmark-ingestion-repair-mode-design.md`, plan: `docs/superpowers/plans/2026-06-26-benchmark-ingestion-repair-mode.md`). Implementer: Grok subagents (Step 4).
   - [x] Task 1 — Domain types + Zod contracts (ExecutionResult, repair-mode run/task shapes). [solo, foundation]
   - [x] Task 2 — Code extractor (`lib/workflows/extract-code.ts`). [parallel batch A]
-  - [ ] Task 3 — SandboxExecutor port + MockSandboxExecutor (`lib/execution/*`). [parallel batch A]
+  - [x] Task 3 — SandboxExecutor port + MockSandboxExecutor (`lib/execution/*`). [parallel batch A]
   - [ ] Task 4 — QuixBugs adapter + ingest script + `upsertBenchmarkTask`. [parallel batch A]
   - [ ] Task 5 — Repair runner + execution scoring (`scoreExecution`, runner rewrite). [needs 1,2,3,4]
   - [ ] Task 6 — E2B executor implementation (needs `E2B_API_KEY` to run live). [needs 1,3]
