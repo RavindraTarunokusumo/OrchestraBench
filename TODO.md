@@ -16,7 +16,7 @@ Completed sessions must be moved to `docs/iterations/archive/`.
     - [x] Scope extension: updated the SSE route (`app/api/runs/stream/route.ts`) and its two tests, since `runWorkflow`'s new `executor`/`testCode` contract broke that caller (plan had only scheduled the client hook for Task 8). Exported `resolveRunInput` for reuse.
   - [x] Task 6 — E2B executor implementation. [needs 1,3] (runtime-unverified until `E2B_API_KEY` is provided)
   - [x] Task 7 — Evaluation cleanup (delete dead metrics scorer); lib/** typecheck-clean. [needs 5]
-  - [ ] Task 8 — New Run + Run Detail UI for repair results. [parallel batch B]
+  - [x] Task 8 — New Run + Run Detail UI for repair results. [parallel batch B]
   - [ ] Task 9 — Dashboard + datasets guards. [parallel batch B]
 
 - [ ] UI overhaul + live orchestration view (spec: `docs/superpowers/specs/2026-06-23-ui-overhaul-orchestration-view-design.md`)
