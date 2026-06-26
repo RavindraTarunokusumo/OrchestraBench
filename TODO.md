@@ -17,7 +17,7 @@ Completed sessions must be moved to `docs/iterations/archive/`.
   - [x] Task 6 — E2B executor implementation. [needs 1,3] (runtime-unverified until `E2B_API_KEY` is provided)
   - [x] Task 7 — Evaluation cleanup (delete dead metrics scorer); lib/** typecheck-clean. [needs 5]
   - [x] Task 8 — New Run + Run Detail UI for repair results. [parallel batch B]
-  - [ ] Task 9 — Dashboard + datasets guards. [parallel batch B]
+  - [x] Task 9 — Dashboard + datasets guards. [parallel batch B] (project typechecks + builds clean)
 
 - [ ] UI overhaul + live orchestration view (spec: `docs/superpowers/specs/2026-06-23-ui-overhaul-orchestration-view-design.md`)
   - [x] Phase 1 — Tailwind v4 + shadcn/ui foundation, light/dark theming (next-themes), polished top nav. (894af25)
