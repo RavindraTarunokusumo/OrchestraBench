@@ -31,26 +31,24 @@ export type KnownBug = {
   line?: number;
 };
 
-export type Finding = {
-  id: string;
-  title: string;
-  description: string;
-  severity: Severity;
-  confidence: number;
-  sourceRole: ModelRole;
-  filePath?: string;
-  line?: number;
-  truthState?: "unknown" | "true_positive" | "false_positive" | "missed";
+export type ExecutionResult = {
+  resolved: boolean;
+  testsPassed: number;
+  testsTotal: number;
+  exitCode: number | null;
+  timedOut: boolean;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+  backend: "e2b" | "mock";
 };
 
 export type Evaluation = {
-  truePositives: number;
-  falsePositives: number;
-  missedKnownBugs: number;
-  highSeverityTruePositives: number;
-  qualityScore: number;
+  resolved: boolean;
+  testsPassed: number;
+  testsTotal: number;
   valueScore: number;
-  judgeConfidence: number;
+  judgeConfidence?: number;
   userRating?: number;
   notes?: string;
 };
@@ -83,7 +81,8 @@ export type RunInput = {
   workflow: WorkflowKind;
   costLimitUsd?: number;
   benchmarkTaskId?: string;
-  knownBugs?: KnownBug[];
+  testCode?: string;
+  entryPoint?: string;
 };
 
 export type RunResult = {
@@ -96,7 +95,8 @@ export type RunResult = {
   code: string;
   providerLabel: string;
   finalAnswer: string;
-  findings: Finding[];
+  candidateCode: string;
+  execution: ExecutionResult;
   calls: ModelCallTrace[];
   evaluation: Evaluation;
   costUsd: number;
@@ -116,7 +116,11 @@ export type BenchmarkTask = {
   language: string;
   prompt: string;
   code: string;
-  knownBugs: KnownBug[];
+  testCode: string;
+  referenceFix?: string;
+  entryPoint?: string;
+  source: "manual" | "quixbugs";
+  knownBugs?: KnownBug[];
   tags: string[];
   createdAt: string;
   updatedAt: string;
