@@ -146,17 +146,51 @@ describe("reduceStreamEvent", () => {
     expect(next.escalation).toEqual({ escalated: true, reason: "verifier confidence below threshold" });
   });
 
+  it("execution-result stores the execution result in state", () => {
+    const afterInit = reduceStreamEvent(initialRunStreamState, runInitEvent);
+    const executionResult = {
+      resolved: true,
+      testsPassed: 2,
+      testsTotal: 2,
+      exitCode: 0,
+      timedOut: false,
+      stdout: "2 passed",
+      stderr: "",
+      durationMs: 120,
+      backend: "mock" as const
+    };
+
+    const next = reduceStreamEvent(afterInit, { type: "execution-result", result: executionResult });
+
+    expect(next.executionResult).toEqual(executionResult);
+  });
+
   it("run-final marks status complete, sets finalRunId, and marks the result node done", () => {
     const afterInit = reduceStreamEvent(initialRunStreamState, runInitEvent);
+    const afterExecution = reduceStreamEvent(afterInit, {
+      type: "execution-result",
+      result: {
+        resolved: true,
+        testsPassed: 2,
+        testsTotal: 2,
+        exitCode: 0,
+        timedOut: false,
+        stdout: "ok",
+        stderr: "",
+        durationMs: 50,
+        backend: "mock"
+      }
+    });
 
-    const next = reduceStreamEvent(afterInit, {
+    const next = reduceStreamEvent(afterExecution, {
       type: "run-final",
       runId: "run_abc123",
       status: "completed",
       costUsd: 0.01,
       latencyMs: 2000,
-      findingsCount: 3,
-      qualityScore: 0.8,
+      resolved: true,
+      testsPassed: 2,
+      testsTotal: 2,
       valueScore: 0.7
     });
 
@@ -165,12 +199,14 @@ describe("reduceStreamEvent", () => {
     expect(next.nodeStates.result.status).toBe("done");
     expect(next.totals.costUsd).toBe(0.01);
     expect(next.totals.latencyMs).toBe(2000);
+    expect(next.executionResult?.resolved).toBe(true);
     expect(next.finalSummary).toEqual({
       status: "completed",
       costUsd: 0.01,
       latencyMs: 2000,
-      findingsCount: 3,
-      qualityScore: 0.8,
+      resolved: true,
+      testsPassed: 2,
+      testsTotal: 2,
       valueScore: 0.7
     });
   });
@@ -184,8 +220,9 @@ describe("reduceStreamEvent", () => {
       status: "failed",
       costUsd: 0.001,
       latencyMs: 500,
-      findingsCount: 0,
-      qualityScore: 0,
+      resolved: false,
+      testsPassed: 0,
+      testsTotal: 1,
       valueScore: 0
     });
 
@@ -193,6 +230,7 @@ describe("reduceStreamEvent", () => {
     expect(next.finalRunId).toBe("run_failed_1");
     expect(next.nodeStates.result.status).toBe("failed");
     expect(next.finalSummary?.status).toBe("failed");
+    expect(next.finalSummary?.resolved).toBe(false);
   });
 
   it("run-error sets status error and the message, with no runId", () => {
