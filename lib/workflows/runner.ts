@@ -1,15 +1,17 @@
 import type {
   Evaluation,
-  Finding,
+  ExecutionResult,
   ModelCallTrace,
   ModelRole,
   RunInput,
   RunResult,
   WorkflowKind
 } from "@/lib/domain/types";
-import { computeEvaluationScores } from "@/lib/evaluation/metrics";
+import { scoreExecution } from "@/lib/evaluation/score-execution";
+import type { SandboxExecutor } from "@/lib/execution/executor";
 import type { ModelProvider, ModelRequest } from "@/lib/providers/types";
 import { toCallTrace } from "@/lib/providers/types";
+import { extractCode } from "@/lib/workflows/extract-code";
 import { buildWorkflowGraph } from "@/lib/workflows/graph";
 import type { WorkflowEventHandler } from "@/lib/workflows/events";
 
@@ -18,9 +20,22 @@ const STRONG_MODEL = process.env.OPENROUTER_STRONG_MODEL || "cohere/north-mini-c
 const ESCALATION_CONFIDENCE_THRESHOLD = 0.6;
 const RESPONSE_PREVIEW_LENGTH = 200;
 
+const FAILED_EXECUTION: ExecutionResult = {
+  resolved: false,
+  testsPassed: 0,
+  testsTotal: 0,
+  exitCode: null,
+  timedOut: false,
+  stdout: "",
+  stderr: "",
+  durationMs: 0,
+  backend: "mock"
+};
+
 type RunWorkflowArgs = {
   input: RunInput;
   provider: ModelProvider;
+  executor: SandboxExecutor;
   onEvent?: WorkflowEventHandler;
 };
 
@@ -30,7 +45,12 @@ type CallState = {
   stepCounter: number;
 };
 
-export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs): Promise<RunResult> {
+export async function runWorkflow({
+  input,
+  provider,
+  executor,
+  onEvent
+}: RunWorkflowArgs): Promise<RunResult> {
   validateRunInput(input);
 
   const startedAt = new Date();
@@ -46,7 +66,7 @@ export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs)
       const call = await executeCall(state, provider, "cheap_reviewer", {
         role: "cheap_reviewer",
         model: CHEAP_MODEL,
-        prompt: buildReviewPrompt(input, "cheap baseline reviewer")
+        prompt: buildRepairPrompt(input, "cheap baseline reviewer")
       });
       finalAnswer = call.response;
     }
@@ -55,7 +75,7 @@ export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs)
       const call = await executeCall(state, provider, "strong_reviewer", {
         role: "strong_reviewer",
         model: STRONG_MODEL,
-        prompt: buildReviewPrompt(input, "strong baseline reviewer")
+        prompt: buildRepairPrompt(input, "strong baseline reviewer")
       });
       finalAnswer = call.response;
     }
@@ -67,7 +87,7 @@ export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs)
           executeCall(state, provider, `panelist-${index}`, {
             role: "panelist",
             model: CHEAP_MODEL,
-            prompt: buildReviewPrompt(input, `panel reviewer ${index}`)
+            prompt: buildRepairPrompt(input, `panel reviewer ${index}`)
           })
         )
       );
@@ -85,7 +105,7 @@ export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs)
       const cheap = await executeCall(state, provider, "cheap_reviewer", {
         role: "cheap_reviewer",
         model: CHEAP_MODEL,
-        prompt: buildReviewPrompt(input, "cheap-first reviewer")
+        prompt: buildRepairPrompt(input, "cheap-first reviewer")
       });
       const verifier = await executeCall(state, provider, "verifier", {
         role: "verifier",
@@ -107,7 +127,7 @@ export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs)
         const strong = await executeCall(state, provider, "strong_reviewer", {
           role: "strong_reviewer",
           model: STRONG_MODEL,
-          prompt: buildReviewPrompt(input, "escalated strong reviewer")
+          prompt: buildRepairPrompt(input, "escalated strong reviewer")
         });
         finalAnswer = strong.response;
         escalated = true;
@@ -140,7 +160,7 @@ export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs)
       const finalizer = await executeCall(state, provider, "finalizer", {
         role: "finalizer",
         model: CHEAP_MODEL,
-        prompt: `Produce the final report from worker and verifier notes:\n${worker.response}\n\n${verifier.response}`
+        prompt: buildRepairPrompt(input, "finalizer")
       });
       finalAnswer = finalizer.response;
     }
@@ -148,23 +168,37 @@ export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs)
     return buildFailedRun(input, provider.label, state.calls, startedAt, error);
   }
 
-  const findings = synthesizeFindings(input, finalAnswer);
+  const candidateCode = extractCode(finalAnswer);
   const costUsd = sumCost(state.calls);
+  const execution = await executor.run({
+    language: input.language,
+    candidateCode,
+    testCode: input.testCode ?? "",
+    entryPoint: input.entryPoint,
+    timeoutMs: 30_000
+  });
+  onEvent?.({ type: "execution-result", result: execution });
+
+  const scored = scoreExecution(execution, costUsd);
+  const evaluation: Evaluation = {
+    ...scored,
+    judgeConfidence: state.calls.some((c) => c.role === "judge") ? 0.84 : 0.72
+  };
   const latencyMs = state.calls.reduce((total, call) => total + call.latencyMs, 0);
-  const evaluation = evaluateRun(findings, input.knownBugs ?? [], costUsd, state.calls);
   const completedAt = new Date();
 
   return {
     id: makeId("run"),
     workflow: input.workflow,
-    status: "completed",
+    status: execution.resolved ? "completed" : "partial",
     title: input.title,
     language: input.language,
     prompt: input.prompt,
     code: input.code,
     providerLabel: provider.label,
     finalAnswer,
-    findings,
+    candidateCode,
+    execution,
     calls: state.calls,
     evaluation,
     costUsd,
@@ -173,8 +207,7 @@ export async function runWorkflow({ input, provider, onEvent }: RunWorkflowArgs)
     completedAt: completedAt.toISOString(),
     escalated,
     escalationReason,
-    benchmarkTaskId: input.benchmarkTaskId,
-    knownBugs: input.knownBugs
+    benchmarkTaskId: input.benchmarkTaskId
   };
 }
 
@@ -189,6 +222,10 @@ function validateRunInput(input: RunInput): void {
 
   if (!input.prompt.trim()) {
     throw new Error("Prompt is required.");
+  }
+
+  if (!input.testCode?.trim()) {
+    throw new Error("Test code is required.");
   }
 }
 
@@ -263,14 +300,14 @@ function makeStepId(state: CallState): string {
   return `step_${state.stepCounter}`;
 }
 
-function buildReviewPrompt(input: RunInput, role: string): string {
+function buildRepairPrompt(input: RunInput, role: string): string {
   return [
     `Role: ${role}`,
     `Task: ${input.title}`,
     `Language: ${input.language}`,
     `Instructions: ${input.prompt}`,
-    "Return concrete bug findings, severity, evidence, and suggested fixes.",
-    "Code:",
+    "Return only the corrected code in a single code block. Do not include explanations.",
+    "Buggy code:",
     input.code
   ].join("\n");
 }
@@ -293,87 +330,6 @@ function parseVerifierConfidence(response: string): number {
 
 function clampConfidence(value: number): number {
   return Math.min(1, Math.max(0, value));
-}
-
-function synthesizeFindings(input: RunInput, finalAnswer: string): Finding[] {
-  const knownBugs = input.knownBugs ?? [];
-  if (knownBugs.length > 0) {
-    return knownBugs
-      .filter((bug) => matchesKnownBug(finalAnswer, bug.title, bug.description))
-      .map((bug) => ({
-        id: makeId("finding"),
-        title: bug.title,
-        description: bug.description,
-        severity: bug.severity,
-        confidence: 0.82,
-        sourceRole: input.workflow === "single_strong" ? "strong_reviewer" : "judge",
-        filePath: bug.filePath,
-        line: bug.line,
-        truthState: "true_positive"
-      }));
-  }
-
-  return [
-    {
-      id: makeId("finding"),
-      title: "Unsafe nullable access",
-      description:
-        finalAnswer ||
-        "The review identified a likely unsafe access path that can throw before authorization logic completes.",
-      severity: input.workflow === "single_cheap" ? "medium" : "high",
-      confidence: input.workflow === "single_cheap" ? 0.68 : 0.82,
-      sourceRole: input.workflow === "single_strong" ? "strong_reviewer" : "judge",
-      truthState: "true_positive"
-    }
-  ];
-}
-
-function matchesKnownBug(finalAnswer: string, title: string, description: string): boolean {
-  const answer = normalizeForMatch(finalAnswer);
-  const tokens = normalizeForMatch(`${title} ${description}`)
-    .split(" ")
-    .filter((token) => token.length >= 4);
-  if (tokens.length === 0) {
-    return false;
-  }
-
-  const matches = tokens.filter((token) => answer.includes(token)).length;
-  return matches / tokens.length >= 0.25;
-}
-
-function normalizeForMatch(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-function evaluateRun(
-  findings: Finding[],
-  knownBugs: RunInput["knownBugs"],
-  costUsd: number,
-  calls: ModelCallTrace[]
-): Evaluation {
-  const truePositives = findings.filter((finding) => finding.truthState === "true_positive").length;
-  const falsePositives = findings.filter((finding) => finding.truthState === "false_positive").length;
-  const highSeverityTruePositives = findings.filter(
-    (finding) => finding.truthState === "true_positive" && finding.severity === "high"
-  ).length;
-  const missedKnownBugs = Math.max(0, (knownBugs?.length ?? 0) - truePositives);
-  const scores = computeEvaluationScores({
-    truePositives,
-    falsePositives,
-    missedKnownBugs,
-    highSeverityTruePositives,
-    costUsd
-  });
-
-  return {
-    truePositives,
-    falsePositives,
-    missedKnownBugs,
-    highSeverityTruePositives,
-    qualityScore: scores.qualityScore,
-    valueScore: scores.valueScore,
-    judgeConfidence: calls.some((call) => call.role === "judge") ? 0.84 : 0.72
-  };
 }
 
 function sumCost(calls: ModelCallTrace[]): number {
@@ -419,7 +375,7 @@ function buildFailedRun(
   const failureNotes = error instanceof Error ? error.message : "Unknown workflow failure.";
   const completedAt = new Date();
   const costUsd = sumCost(calls);
-  const evaluation = evaluateRun([], input.knownBugs ?? [], costUsd, calls);
+  const evaluation = scoreExecution(FAILED_EXECUTION, costUsd);
 
   return {
     id: makeId("run"),
@@ -431,7 +387,8 @@ function buildFailedRun(
     code: input.code,
     providerLabel,
     finalAnswer: "",
-    findings: [],
+    candidateCode: "",
+    execution: FAILED_EXECUTION,
     calls,
     evaluation,
     costUsd,
@@ -439,8 +396,7 @@ function buildFailedRun(
     startedAt: startedAt.toISOString(),
     completedAt: completedAt.toISOString(),
     failureNotes,
-    benchmarkTaskId: input.benchmarkTaskId,
-    knownBugs: input.knownBugs
+    benchmarkTaskId: input.benchmarkTaskId
   };
 }
 

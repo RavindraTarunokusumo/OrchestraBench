@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { BenchmarkTask, Evaluation, RunInput, RunResult, WorkflowKind } from "@/lib/domain/types";
+import { createConfiguredExecutor } from "@/lib/execution/provider";
 import { createConfiguredProvider } from "@/lib/providers/provider";
 import { runWorkflow } from "@/lib/workflows/runner";
 
@@ -30,8 +31,21 @@ export async function getRun(id: string): Promise<RunResult | undefined> {
 
 export async function createRun(input: RunInput): Promise<RunResult> {
   const provider = createConfiguredProvider();
-  const result = await runWorkflow({ input, provider });
+  const executor = createConfiguredExecutor();
+  const resolved = await resolveRunInput(input);
+  const result = await runWorkflow({ input: resolved, provider, executor });
   return saveRun(result);
+}
+
+export async function resolveRunInput(input: RunInput): Promise<RunInput> {
+  if (input.testCode || !input.benchmarkTaskId) {
+    return input;
+  }
+  const task = await getDataset(input.benchmarkTaskId);
+  if (!task) {
+    return input;
+  }
+  return { ...input, code: input.code || task.code, testCode: task.testCode, entryPoint: task.entryPoint };
 }
 
 export async function saveRun(result: RunResult): Promise<RunResult> {
@@ -148,7 +162,8 @@ export async function rerunDatasetTask(
           language: task.language,
           prompt: task.prompt,
           code: task.code,
-          knownBugs: task.knownBugs,
+          testCode: task.testCode,
+          entryPoint: task.entryPoint,
           benchmarkTaskId: task.id,
           workflow,
           costLimitUsd

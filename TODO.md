@@ -12,7 +12,8 @@ Completed sessions must be moved to `docs/iterations/archive/`.
   - [x] Task 3 — SandboxExecutor port + MockSandboxExecutor (`lib/execution/*`). [parallel batch A]
   - [x] Task 4 — QuixBugs adapter + ingest script + `upsertBenchmarkTask`. [parallel batch A]
     - [ ] Verify `QUIXBUGS_COMMIT` pin in `scripts/ingest-benchmark.ts` against the live repo before first real `npm run ingest:quixbugs` (currently unverified).
-  - [ ] Task 5 — Repair runner + execution scoring (`scoreExecution`, runner rewrite). [needs 1,2,3,4]
+  - [x] Task 5 — Repair runner + execution scoring (`scoreExecution`, runner rewrite). [needs 1,2,3,4]
+    - [x] Scope extension: updated the SSE route (`app/api/runs/stream/route.ts`) and its two tests, since `runWorkflow`'s new `executor`/`testCode` contract broke that caller (plan had only scheduled the client hook for Task 8). Exported `resolveRunInput` for reuse.
   - [ ] Task 6 — E2B executor implementation (needs `E2B_API_KEY` to run live). [needs 1,3]
   - [ ] Task 7 — Evaluation cleanup + project-wide typecheck green. [needs 5]
   - [ ] Task 8 — New Run + Run Detail UI for repair results. [parallel batch B]

@@ -1,4 +1,4 @@
-import type { ModelRole, ModelUsage, RunStatus, WorkflowKind } from "@/lib/domain/types";
+import type { ExecutionResult, ModelRole, ModelUsage, RunStatus, WorkflowKind } from "@/lib/domain/types";
 import type { WorkflowGraph } from "@/lib/workflows/graph";
 
 export type WorkflowEvent =
@@ -21,14 +21,16 @@ export type WorkflowEvent =
       responsePreview: string;
     }
   | { type: "escalation"; escalated: boolean; reason: string }
+  | { type: "execution-result"; result: ExecutionResult }
   | {
       type: "run-final";
       runId: string;
       status: RunStatus;
       costUsd: number;
       latencyMs: number;
-      findingsCount: number;
-      qualityScore: number;
+      resolved: boolean;
+      testsPassed: number;
+      testsTotal: number;
       valueScore: number;
     }
   | { type: "run-error"; message: string };
