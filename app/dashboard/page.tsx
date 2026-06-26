@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { WorkflowCharts, type WorkflowChartRow } from "@/components/dashboard/workflow-charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,12 +9,8 @@ import { listRuns } from "@/lib/store/file-store";
 export default async function DashboardPage() {
   const runs = await listRuns();
   const rows = workflowKinds.map((workflow) => summarize(workflow, runs.filter((run) => run.workflow === workflow)));
-  const chartRows: WorkflowChartRow[] = rows.map((row) => ({
-    workflow: row.workflow,
-    quality: Number(row.quality.toFixed(2)),
-    value: Number(row.value.toFixed(2)),
-    cost: Number(row.cost.toFixed(4))
-  }));
+  const totalResolved = runs.filter((run) => run.evaluation.resolved).length;
+  const overallResolveRate = runs.length > 0 ? totalResolved / runs.length : 0;
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
@@ -23,7 +18,7 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Comparison dashboard</h1>
           <p className="text-muted-foreground">
-            Rank orchestration workflows by quality, cost, latency, and value score.
+            Rank orchestration workflows by resolve rate, cost, latency, and value score.
           </p>
         </div>
         <Button asChild>
@@ -42,7 +37,41 @@ export default async function DashboardPage() {
         </Card>
       ) : (
         <>
-          <WorkflowCharts rows={chartRows} />
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Total runs</CardDescription>
+                <CardTitle className="text-3xl">{runs.length}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Resolve rate</CardDescription>
+                <CardTitle className="text-3xl">{(overallResolveRate * 100).toFixed(0)}%</CardTitle>
+              </CardHeader>
+              <CardContent className="text-muted-foreground text-sm">
+                {totalResolved} of {runs.length} runs resolved
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Avg value score</CardDescription>
+                <CardTitle className="text-3xl">{avg(runs.map((run) => run.evaluation.valueScore)).toFixed(1)}</CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Repair metrics — full view in Phase 2</CardTitle>
+              <CardDescription>
+                Interactive resolve-rate and value-score charts will ship in the next dashboard phase.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-muted-foreground text-sm">
+              Per-workflow resolve rate and value score are available in the comparison table below.
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
@@ -55,7 +84,7 @@ export default async function DashboardPage() {
                   <TableRow>
                     <TableHead>Workflow</TableHead>
                     <TableHead>Runs</TableHead>
-                    <TableHead>Avg quality</TableHead>
+                    <TableHead>Resolve rate</TableHead>
                     <TableHead>Avg value</TableHead>
                     <TableHead>Avg cost</TableHead>
                     <TableHead>Avg latency</TableHead>
@@ -66,10 +95,12 @@ export default async function DashboardPage() {
                     <TableRow key={row.workflow}>
                       <TableCell className="font-medium">{row.workflow}</TableCell>
                       <TableCell>{row.count}</TableCell>
-                      <TableCell>{row.quality.toFixed(1)}</TableCell>
-                      <TableCell>{row.value.toFixed(1)}</TableCell>
-                      <TableCell>${row.cost.toFixed(4)}</TableCell>
-                      <TableCell>{Math.round(row.latency)} ms</TableCell>
+                      <TableCell>
+                        {row.count === 0 ? "—" : `${(row.resolveRate * 100).toFixed(0)}% (${row.resolvedCount}/${row.count})`}
+                      </TableCell>
+                      <TableCell>{row.count === 0 ? "—" : row.value.toFixed(1)}</TableCell>
+                      <TableCell>{row.count === 0 ? "—" : `$${row.cost.toFixed(4)}`}</TableCell>
+                      <TableCell>{row.count === 0 ? "—" : `${Math.round(row.latency)} ms`}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -91,7 +122,8 @@ export default async function DashboardPage() {
                       <CardDescription>{run.workflow}</CardDescription>
                     </CardHeader>
                     <CardContent className="text-muted-foreground text-sm">
-                      Quality {run.evaluation.qualityScore.toFixed(1)} · Value {run.evaluation.valueScore.toFixed(1)}
+                      {run.evaluation.resolved ? "Resolved" : "Unresolved"} · {run.evaluation.testsPassed}/
+                      {run.evaluation.testsTotal} tests · Value {run.evaluation.valueScore.toFixed(1)}
                     </CardContent>
                   </Card>
                 </Link>
@@ -106,13 +138,16 @@ export default async function DashboardPage() {
 
 function summarize(workflow: WorkflowKind, runs: Awaited<ReturnType<typeof listRuns>>) {
   if (runs.length === 0) {
-    return { workflow, count: 0, quality: 0, value: 0, cost: 0, latency: 0 };
+    return { workflow, count: 0, resolvedCount: 0, resolveRate: 0, value: 0, cost: 0, latency: 0 };
   }
+
+  const resolvedCount = runs.filter((run) => run.evaluation.resolved).length;
 
   return {
     workflow,
     count: runs.length,
-    quality: avg(runs.map((run) => run.evaluation.qualityScore)),
+    resolvedCount,
+    resolveRate: resolvedCount / runs.length,
     value: avg(runs.map((run) => run.evaluation.valueScore)),
     cost: avg(runs.map((run) => run.costUsd)),
     latency: avg(runs.map((run) => run.latencyMs))

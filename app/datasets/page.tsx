@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { createDatasetAction } from "@/app/actions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { listDatasets } from "@/lib/store/file-store";
 
@@ -26,18 +27,36 @@ export default async function DatasetsPage() {
               <CardContent className="text-muted-foreground py-10 text-center">No datasets yet.</CardContent>
             </Card>
           ) : (
-            datasets.map((task) => (
-              <Link key={task.id} href={`/datasets/${task.id}`} className="group">
-                <Card className="transition-colors group-hover:border-primary">
-                  <CardHeader>
-                    <CardTitle>{task.title}</CardTitle>
-                    <CardDescription>
-                      {task.language} · {task.knownBugs.length} known bug(s)
-                    </CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            ))
+            <Card>
+              <CardContent className="pt-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Language</TableHead>
+                      <TableHead>Known bugs</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {datasets.map((task) => (
+                      <TableRow key={task.id}>
+                        <TableCell>
+                          <Link href={`/datasets/${task.id}`} className="font-medium hover:underline">
+                            {task.title}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{task.source}</TableCell>
+                        <TableCell>{task.language}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {task.knownBugs?.length ?? 0} known bug(s)
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           )}
         </div>
 
