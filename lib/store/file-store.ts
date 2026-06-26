@@ -87,6 +87,8 @@ export async function createDatasetTask(input: {
     language: input.language,
     prompt: input.prompt,
     code: input.code,
+    source: "manual",
+    testCode: "",
     knownBugs:
       input.knownBugTitle && input.knownBugDescription
         ? [
@@ -106,6 +108,24 @@ export async function createDatasetTask(input: {
     data.datasets.unshift(task);
   });
   return task;
+}
+
+export async function upsertBenchmarkTask(task: BenchmarkTask): Promise<BenchmarkTask> {
+  const now = new Date().toISOString();
+  return mutateData((data) => {
+    const stamped: BenchmarkTask = {
+      ...task,
+      createdAt: task.createdAt === "1970-01-01T00:00:00.000Z" ? now : task.createdAt,
+      updatedAt: now
+    };
+    const index = data.datasets.findIndex((item) => item.id === task.id);
+    if (index >= 0) {
+      data.datasets[index] = stamped;
+    } else {
+      data.datasets.unshift(stamped);
+    }
+    return stamped;
+  });
 }
 
 export async function rerunDatasetTask(
@@ -200,50 +220,7 @@ function isNodeError(error: unknown): error is NodeJS.ErrnoException {
 }
 
 function seedData(): AppData {
-  const now = new Date().toISOString();
-  return {
-    runs: [],
-    datasets: [
-      {
-        id: "seed_nullable_auth",
-        title: "Nullable auth helper",
-        language: "TypeScript",
-        prompt: "Find correctness and security bugs in this authorization helper.",
-        code: "export function canDelete(user?: { role: string }) {\n  return user!.role === 'admin';\n}",
-        knownBugs: [
-          {
-            id: "bug_nullable_user",
-            title: "Throws when user is missing",
-            description: "The non-null assertion allows a runtime crash before authorization completes.",
-            severity: "high",
-            line: 2
-          }
-        ],
-        tags: ["auth", "typescript", "seed"],
-        createdAt: now,
-        updatedAt: now
-      },
-      {
-        id: "seed_python_truthy",
-        title: "Python payment validation",
-        language: "Python",
-        prompt: "Review this payment validation function for logic bugs.",
-        code: "def can_refund(amount, approved):\n    if approved or amount > 0:\n        return True\n    return False\n",
-        knownBugs: [
-          {
-            id: "bug_refund_or",
-            title: "Refund allowed without approval",
-            description: "The condition uses OR, allowing positive refunds even when approval is false.",
-            severity: "critical",
-            line: 2
-          }
-        ],
-        tags: ["payments", "python", "seed"],
-        createdAt: now,
-        updatedAt: now
-      }
-    ]
-  };
+  return { runs: [], datasets: [] };
 }
 
 function makeId(prefix: string): string {
