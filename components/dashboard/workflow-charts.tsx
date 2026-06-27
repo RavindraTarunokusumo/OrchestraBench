@@ -48,12 +48,15 @@ export type WorkflowChartRow = {
 };
 
 function buildWorkflowChartConfig(rows: WorkflowChartRow[]): ChartConfig {
-  return Object.fromEntries(
-    rows.map((row, index) => [
-      row.workflow,
-      { label: row.workflow, color: CHART_COLORS[index % CHART_COLORS.length] },
-    ])
-  );
+  return {
+    avgValue: { label: "Avg value score" },
+    ...Object.fromEntries(
+      rows.map((row, index) => [
+        row.workflow,
+        { label: row.workflow, color: CHART_COLORS[index % CHART_COLORS.length] },
+      ])
+    ),
+  };
 }
 
 function formatCostTick(value: number): string {
