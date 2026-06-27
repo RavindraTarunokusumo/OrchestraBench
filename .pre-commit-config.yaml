@@ -19,13 +19,6 @@ repos:
         exclude: ^tests/fixtures/quixbugs/json_testcases/  # JSONL (one array per line), not single-doc JSON
       - id: check-yaml
 
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.14
-    hooks:
-      - id: ruff-check               # quick Python checkstyle (lint + import sort)
-        args: [--fix]
-      - id: ruff-format              # quick Python formatting
-
   - repo: local
     hooks:
       - id: no-test-only

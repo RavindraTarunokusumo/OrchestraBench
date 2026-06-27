@@ -33,7 +33,7 @@ Use `npm run typecheck` for TypeScript validation, `npm run lint` for the config
 
 ## Pre-commit Hooks
 
-Fast, hygiene-focused hooks defined in `.pre-commit-config.yaml` (config: `ruff.toml`). They do not replace the validation gate above — they catch the cheap stuff before each commit.
+Fast, hygiene-focused hooks defined in `.pre-commit-config.yaml`. They do not replace the validation gate above — they catch the cheap stuff before each commit.
 
 Setup once per clone/worktree:
 
@@ -48,7 +48,7 @@ Run on demand:
 pre-commit run --all-files
 ```
 
-Included hooks: `end-of-file-fixer` (exactly one trailing newline — the recurring Grok gap), `trailing-whitespace`, `mixed-line-ending` (LF), `check-merge-conflict`, `check-added-large-files`, `check-json` (excludes the JSONL `json_testcases` fixtures), `check-yaml`, `ruff-check` + `ruff-format` (Python; vendored fixtures excluded via `ruff.toml`), and a local `no-test-only` grep that rejects committed `describe.only`/`it.only`/`test.only`.
+Included hooks: `end-of-file-fixer` (exactly one trailing newline — the recurring Grok gap), `trailing-whitespace`, `mixed-line-ending` (LF), `check-merge-conflict`, `check-added-large-files`, `check-json` (excludes the JSONL `json_testcases` fixtures), `check-yaml`, and a local `no-test-only` grep that rejects committed `describe.only`/`it.only`/`test.only`.
 
 ## Production Build
 
