@@ -24,9 +24,9 @@ The runner is synchronous. The live New Run page streams workflow events over SS
 - `/` home overview (resolve rate, run count).
 - `/runs/new` submits a single repair run and streams the live orchestration canvas.
 - `/runs/[id]` shows the execution panel (resolved badge, tests passed, sandbox stdout/stderr, candidate code), evaluation, feedback controls, model-call trace, and static replay.
-- `/dashboard` summarizes runs per workflow by resolve rate and value score (full repair-metric charts deferred to Phase 2).
-- `/datasets` lists benchmark tasks by source + language and creates manual tasks.
-- `/datasets/[id]` shows a task's buggy code + test (reference fix behind a reveal toggle) and reruns workflows when the task has test code.
+- `/dashboard` summarizes runs per workflow (resolve rate, value score, cost, latency) in a comparison table plus interactive charts — a resolve-rate-vs-cost scatter and a value-score leaderboard — all backed by the shared `lib/dashboard/aggregate.ts` aggregator.
+- `/datasets` lists benchmark tasks by source + language with per-task run/resolved counts, and creates manual tasks.
+- `/datasets/[id]` shows a task's buggy code + test (reference fix behind a reveal toggle), reruns workflows when the task has test code, and shows a per-task cross-workflow comparison of its runs.
 - `/api/runs/stream` SSE run endpoint. `/api/export` returns the file-store payload as JSON.
 
 ## Core Modules
@@ -36,6 +36,7 @@ The runner is synchronous. The live New Run page streams workflow events over SS
 - `lib/workflows/extract-code.ts` — pulls the candidate code from a model answer (largest fenced block, else trimmed answer).
 - `lib/execution/executor.ts` — `SandboxExecutor` port; `e2b.ts` runs pytest in an E2B sandbox; `mock-executor.ts` returns scripted results for tests; `provider.ts` selects the backend.
 - `lib/evaluation/score-execution.ts` — resolve + partial-credit + resolve-weighted value scoring.
+- `lib/dashboard/aggregate.ts` — `summarizeByWorkflow` / `chartableSummaries`: pure per-workflow aggregation (resolve rate, value, cost, latency, test pass rate) shared by the dashboard table/charts and the dataset-detail per-task comparison; defensive against legacy runs with missing evaluation fields.
 - `lib/benchmarks/adapter.ts` + `quixbugs.ts` — `BenchmarkAdapter` port and the QuixBugs adapter; `scripts/ingest-benchmark.ts` vendors and ingests tasks.
 - `lib/store/file-store.ts` — local persistence, run creation/resolution, feedback, dataset CRUD, reruns, benchmark upsert, export.
 - `lib/providers/*` — provider interface, mock provider, and OpenRouter provider.
