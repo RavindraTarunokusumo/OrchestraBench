@@ -1,0 +1,36 @@
+# Pre-commit hooks for OrchestraBench.
+# Setup once:  pip install pre-commit  (or: uvx)  then  pre-commit install
+# Run on all:  pre-commit run --all-files
+#
+# Kept fast and hygiene-focused; the heavier gates (npm run typecheck / lint /
+# test) stay in the validation step before each commit. See docs/commands.md.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer        # exactly one trailing newline (the recurring Grok gap)
+      - id: trailing-whitespace      # strip trailing whitespace
+      - id: mixed-line-ending        # normalize to LF (matters on Windows)
+        args: [--fix=lf]
+      - id: check-merge-conflict     # reject leftover <<<<<<< markers
+      - id: check-added-large-files  # block accidental large files (e.g. agent-tools dumps)
+        args: [--maxkb=512]
+      - id: check-json
+        exclude: ^tests/fixtures/quixbugs/json_testcases/  # JSONL (one array per line), not single-doc JSON
+      - id: check-yaml
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.14
+    hooks:
+      - id: ruff-check               # quick Python checkstyle (lint + import sort)
+        args: [--fix]
+      - id: ruff-format              # quick Python formatting
+
+  - repo: local
+    hooks:
+      - id: no-test-only
+        name: no focused tests (.only) committed
+        description: Reject describe.only / it.only / test.only left in test files.
+        language: pygrep
+        entry: '(describe|it|test)\.only\('
+        files: \.(test|spec)\.(ts|tsx|js|jsx)$

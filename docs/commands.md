@@ -31,6 +31,25 @@ npm test
 
 Use `npm run typecheck` for TypeScript validation, `npm run lint` for the configured Next/ESLint script, and `npm test` for Vitest. Docs-only changes generally need typecheck and lint only.
 
+## Pre-commit Hooks
+
+Fast, hygiene-focused hooks defined in `.pre-commit-config.yaml` (config: `ruff.toml`). They do not replace the validation gate above — they catch the cheap stuff before each commit.
+
+Setup once per clone/worktree:
+
+```powershell
+pip install pre-commit   # or: uvx pre-commit ...
+pre-commit install
+```
+
+Run on demand:
+
+```powershell
+pre-commit run --all-files
+```
+
+Included hooks: `end-of-file-fixer` (exactly one trailing newline — the recurring Grok gap), `trailing-whitespace`, `mixed-line-ending` (LF), `check-merge-conflict`, `check-added-large-files`, `check-json` (excludes the JSONL `json_testcases` fixtures), `check-yaml`, `ruff-check` + `ruff-format` (Python; vendored fixtures excluded via `ruff.toml`), and a local `no-test-only` grep that rejects committed `describe.only`/`it.only`/`test.only`.
+
 ## Production Build
 
 ```powershell
