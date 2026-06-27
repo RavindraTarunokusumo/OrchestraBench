@@ -5,11 +5,12 @@ import { quixbugsAdapter } from "@/lib/benchmarks/quixbugs";
 import { upsertBenchmarkTask } from "@/lib/store/file-store";
 
 const QUIXBUGS_REPO = "https://github.com/jkoppel/QuixBugs.git";
-const QUIXBUGS_COMMIT = "a23e533a8b9019466e0e3220e2e3d4b9e4cf2e0d";
+// Pinned to the jkoppel/QuixBugs master tip (verified reachable via `git ls-remote`).
+const QUIXBUGS_COMMIT = "4257f44b0ff1181dedaedee6a447e133219fcebf";
 const RAW_DIR = path.join(process.cwd(), ".benchmarks", "quixbugs");
 const SUBSET = [
   "gcd", "bitcount", "find_first_in_sorted", "hanoi", "is_valid_parenthesization",
-  "levenshtein", "lis", "max_sublist_sum", "next_permutation", "shortest_path_length"
+  "levenshtein", "lis", "max_sublist_sum", "next_permutation", "find_in_sorted"
 ];
 
 async function main() {
