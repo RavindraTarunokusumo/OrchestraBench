@@ -10,6 +10,7 @@ type RunPartial = {
   testsTotal?: number;
   costUsd?: number;
   latencyMs?: number;
+  benchmarkTaskId?: string;
 };
 
 function run(partial: RunPartial): RunResult {
@@ -17,6 +18,7 @@ function run(partial: RunPartial): RunResult {
     workflow: partial.workflow,
     costUsd: partial.costUsd ?? 0,
     latencyMs: partial.latencyMs ?? 0,
+    benchmarkTaskId: partial.benchmarkTaskId,
     evaluation: {
       resolved: partial.resolved ?? false,
       valueScore: partial.valueScore ?? 0,
@@ -191,6 +193,40 @@ describe("summarizeByWorkflow", () => {
       avgLatencyMs: 100,
       avgTestPassRate: 0,
     });
+  });
+});
+
+describe("per-task filtering equivalence", () => {
+  it("summarizes only the runs for a given benchmarkTaskId (dataset-detail path)", () => {
+    const runs = [
+      run({ workflow: "single_cheap", benchmarkTaskId: "task-a", resolved: true, valueScore: 10, costUsd: 1, latencyMs: 100, testsPassed: 2, testsTotal: 2 }),
+      run({ workflow: "single_cheap", benchmarkTaskId: "task-a", resolved: false, valueScore: 2, costUsd: 3, latencyMs: 300, testsPassed: 1, testsTotal: 2 }),
+      run({ workflow: "single_cheap", benchmarkTaskId: "task-b", resolved: true, valueScore: 99, costUsd: 9, latencyMs: 900, testsPassed: 2, testsTotal: 2 }),
+      run({ workflow: "panel_judge", benchmarkTaskId: "task-a", resolved: true, valueScore: 6, costUsd: 2, latencyMs: 200, testsPassed: 4, testsTotal: 4 }),
+    ];
+
+    const taskA = runs.filter((r) => r.benchmarkTaskId === "task-a");
+    const summaries = summarizeByWorkflow(taskA);
+
+    // single_cheap for task-a only: the two task-a runs, NOT the task-b run.
+    const cheap = summaries.find((s) => s.workflow === "single_cheap");
+    expect(cheap).toEqual({
+      workflow: "single_cheap",
+      count: 2,
+      resolvedCount: 1,
+      resolveRate: 0.5,
+      avgValue: 6, // (10 + 2) / 2
+      avgCost: 2, // (1 + 3) / 2
+      avgLatencyMs: 200, // (100 + 300) / 2
+      avgTestPassRate: 0.75, // (1 + 0.5) / 2
+    });
+
+    const panel = summaries.find((s) => s.workflow === "panel_judge");
+    expect(panel?.count).toBe(1);
+    expect(panel?.avgValue).toBe(6);
+
+    // The task-b run must not leak into the task-a summary.
+    expect(cheap?.avgValue).not.toBe((10 + 2 + 99) / 3);
   });
 });
 
