@@ -3,15 +3,13 @@
 This file contains active or future work only.
 
 Completed sessions are archived under `docs/iterations/archive/`:
+- `2026-06-27-repair-mode-phase1-e2e-verification.md` — QuixBugs pin fix + live E2B end-to-end proof (PR #6, merge `2d8526d`).
 - `2026-06-27-repair-mode-phase2-dashboard-datasets.md` — dashboard/datasets repair-metrics repurpose (PR #5, merge `c3be558`).
 - `2026-06-27-benchmark-repair-mode-phase1.md` — code-repair pivot (PR #3, merge `f9c80d2`).
 - `earlier-sessions-mvp-and-ui-overhaul.md` — MVP milestones + UI overhaul (PR #2).
 
 ## Active / Next
 
-- [ ] Repair mode — finish proving Phase 1 end-to-end
-  - [ ] Verify the `QUIXBUGS_COMMIT` pin in `scripts/ingest-benchmark.ts` against the live repo before the first real `npm run ingest:quixbugs` (currently unverified).
-  - [ ] Live E2B verification once `E2B_API_KEY` is set: run a QuixBugs task end-to-end (model → extract → sandbox pytest → resolved) and confirm the headline path works.
 - [ ] Repair mode — Phase 3: heavy adapters (Defects4J or SWE-bench Lite) with repo checkout in the sandbox; Vercel Sandbox executor adapter; multi-language (Java) execution.
 - [ ] Dedicated `/workflows` guide page (deferred from the UI overhaul).
 
