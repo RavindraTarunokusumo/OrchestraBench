@@ -40,6 +40,16 @@ npm start
 
 `npm start` expects a successful production build first.
 
+## Benchmark Ingestion
+
+Vendor and ingest QuixBugs repair tasks into the local store (clones a pinned commit into `.benchmarks/`, then upserts a curated subset):
+
+```powershell
+npm run ingest:quixbugs
+```
+
+Pass `-- --all` to ingest all programs instead of the curated subset.
+
 ## Local Data
 
 The MVP writes local runtime data to `.data/orchestrabench.json`.

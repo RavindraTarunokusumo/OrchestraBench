@@ -1,6 +1,6 @@
 # OrchestraBench Docs
 
-OrchestraBench is a Next.js MVP for benchmarking code-review workflows across different model orchestration strategies. The current implementation is intentionally local-first: runs execute synchronously through server actions, persist to a JSON file, and can use either a deterministic mock provider or OpenRouter.
+OrchestraBench is a Next.js MVP for benchmarking code-repair workflows across different model orchestration strategies: each workflow emits a fix that is run against the task's tests in a sandbox, and runs are scored on whether the tests pass. The current implementation is intentionally local-first: runs execute synchronously, persist to a JSON file, and can use either a deterministic mock provider or OpenRouter (and a mock or E2B sandbox executor).
 
 ## Core Documents
 
@@ -15,12 +15,13 @@ OrchestraBench is a Next.js MVP for benchmarking code-review workflows across di
 ## Implementation Snapshot
 
 - App: Next.js App Router with React server components and server actions.
-- Domain: Code-review and bug-finding benchmarks.
+- Domain: Code-repair benchmarks (workflows emit a fix; tests decide pass/fail). QuixBugs is the first ingested source.
 - Workflows: `single_cheap`, `single_strong`, `panel_judge`, `cheap_first`, and `planner_worker_verifier`.
 - Persistence now: `.data/orchestrabench.json` via `lib/store/file-store.ts`.
 - Persistence target: Prisma models in `prisma/schema.prisma` for PostgreSQL.
 - Providers: deterministic mock provider by default; OpenRouter when `OPENROUTER_API_KEY` is set.
-- Evaluation: severity-weighted quality score and value score from `lib/evaluation/metrics.ts`.
+- Execution: mock sandbox executor by default; E2B when `E2B_API_KEY` is set (`lib/execution/`).
+- Evaluation: test-execution based — resolved + partial credit + value score from `lib/evaluation/score-execution.ts`.
 
 ## Source Of Truth
 

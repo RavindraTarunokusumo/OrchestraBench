@@ -1,57 +1,65 @@
 # Architecture
 
-OrchestraBench is a small Next.js App Router application for running code-review benchmark tasks through multiple orchestration workflows and comparing cost, latency, trace, and evaluation metrics.
+OrchestraBench is a small Next.js App Router application for running **code-repair** benchmark tasks through multiple orchestration workflows and comparing whether a fix passes the task's tests against cost, latency, and trace. (It began as a code-*review* benchmarker; Phase 1 of the benchmark-ingestion work repurposed it to code repair — see `docs/superpowers/specs/2026-06-26-benchmark-ingestion-repair-mode-design.md`.)
 
 ## Runtime Flow
 
 ```text
-User submits form
-  -> app/actions.ts validates input with Zod
-  -> lib/store/file-store.ts creates or updates records
-  -> lib/workflows/runner.ts executes the selected workflow
+User submits run (SSE) / rerun (server action)
+  -> createRunSchema / Zod validates input
+  -> lib/store/file-store.ts resolveRunInput() fills testCode/entryPoint from the benchmark task
+  -> lib/workflows/runner.ts executes the selected workflow (emits corrected code)
   -> lib/providers/provider.ts selects mock or OpenRouter provider
-  -> normalized RunResult is written to .data/orchestrabench.json
+  -> lib/workflows/extract-code.ts pulls the candidate fix from the final answer
+  -> lib/execution/provider.ts selects the SandboxExecutor (E2B when E2B_API_KEY set, else mock)
+  -> executor runs the candidate against the task's test; ExecutionResult scored
+  -> normalized RunResult (candidateCode + execution) written to .data/orchestrabench.json
   -> route pages read the file store and render results
 ```
 
-The MVP runner is synchronous. Inngest is the intended future background workflow boundary, but it is not wired into the current scaffold.
+The runner is synchronous. The live New Run page streams workflow events over SSE (`app/api/runs/stream/route.ts`); dataset reruns use the `rerunDatasetAction` server action. Inngest is the intended future background boundary, not yet wired.
 
 ## App Routes
 
-- `/` redirects to `/runs/new`.
-- `/runs/new` submits a single benchmark run.
-- `/runs/[id]` shows final answer, findings, evaluation, feedback controls, and model-call trace.
-- `/dashboard` summarizes runs per workflow by average quality, value, cost, and latency.
-- `/datasets` lists seeded/saved benchmark tasks and creates new ones.
-- `/datasets/[id]` shows a dataset task and reruns selected workflows.
-- `/api/export` returns the current file-store payload as JSON.
+- `/` home overview (resolve rate, run count).
+- `/runs/new` submits a single repair run and streams the live orchestration canvas.
+- `/runs/[id]` shows the execution panel (resolved badge, tests passed, sandbox stdout/stderr, candidate code), evaluation, feedback controls, model-call trace, and static replay.
+- `/dashboard` summarizes runs per workflow by resolve rate and value score (full repair-metric charts deferred to Phase 2).
+- `/datasets` lists benchmark tasks by source + language and creates manual tasks.
+- `/datasets/[id]` shows a task's buggy code + test (reference fix behind a reveal toggle) and reruns workflows when the task has test code.
+- `/api/runs/stream` SSE run endpoint. `/api/export` returns the file-store payload as JSON.
 
 ## Core Modules
 
-- `lib/domain/types.ts` defines the normalized workflow, run, finding, model-call, evaluation, and dataset types.
-- `lib/workflows/runner.ts` validates inputs, executes workflow-specific model-call sequences, synthesizes findings, and computes evaluation metrics.
-- `lib/store/file-store.ts` owns local persistence, seeded datasets, run creation, feedback updates, dataset creation, reruns, and export.
-- `lib/providers/types.ts` defines the provider interface and call trace conversion.
-- `lib/providers/mock-provider.ts` returns deterministic responses for local development and tests.
-- `lib/providers/openrouter-provider.ts` calls OpenRouter chat completions when credentials are configured.
-- `lib/evaluation/metrics.ts` implements the SPEC quality/value score formula.
+- `lib/domain/types.ts` — normalized workflow, run, model-call, `Evaluation`, `ExecutionResult`, and `BenchmarkTask` types (`RunResult` carries `candidateCode` + `execution`).
+- `lib/workflows/runner.ts` — validates inputs, executes workflow-specific model-call sequences, extracts the candidate fix, runs it via the injected executor, and scores the execution.
+- `lib/workflows/extract-code.ts` — pulls the candidate code from a model answer (largest fenced block, else trimmed answer).
+- `lib/execution/executor.ts` — `SandboxExecutor` port; `e2b.ts` runs pytest in an E2B sandbox; `mock-executor.ts` returns scripted results for tests; `provider.ts` selects the backend.
+- `lib/evaluation/score-execution.ts` — resolve + partial-credit + resolve-weighted value scoring.
+- `lib/benchmarks/adapter.ts` + `quixbugs.ts` — `BenchmarkAdapter` port and the QuixBugs adapter; `scripts/ingest-benchmark.ts` vendors and ingests tasks.
+- `lib/store/file-store.ts` — local persistence, run creation/resolution, feedback, dataset CRUD, reruns, benchmark upsert, export.
+- `lib/providers/*` — provider interface, mock provider, and OpenRouter provider.
 
 ## Workflows
 
-- `single_cheap`: one cheap reviewer call.
-- `single_strong`: one strong reviewer call.
-- `panel_judge`: three cheap panelist calls followed by a judge synthesis call.
-- `cheap_first`: cheap reviewer, verifier confidence check, and optional strong-model escalation if confidence is below `0.6` and the cost limit allows it.
-- `planner_worker_verifier`: planner, worker, verifier, and finalizer calls.
+All five emit a corrected-code final answer (repair mode):
 
-Every workflow returns the same `RunResult` shape: status, final answer, findings, model calls, evaluation, total cost, latency, timestamps, and optional escalation metadata.
+- `single_cheap`: one cheap call.
+- `single_strong`: one strong call.
+- `panel_judge`: three cheap panelists, then a judge that merges their fixes into one corrected code block.
+- `cheap_first`: cheap call, verifier confidence check, optional strong-model escalation when confidence is below `0.6` and the cost limit allows.
+- `planner_worker_verifier`: planner, worker, verifier, then a finalizer that emits the corrected code.
 
-## Provider Selection
+Every workflow returns the same `RunResult` shape: status (`completed` when resolved, else `partial`), final answer, `candidateCode`, `execution`, model calls, evaluation, cost, latency, timestamps, and optional escalation metadata.
 
-`createConfiguredProvider()` uses OpenRouter only when `OPENROUTER_API_KEY` is present. Otherwise it falls back to the mock provider. The cheap and strong workflow defaults use `cohere/north-mini-code:free`; the strong model can be overridden with `OPENROUTER_STRONG_MODEL`.
+## Provider & Executor Selection
+
+`createConfiguredProvider()` uses OpenRouter only when `OPENROUTER_API_KEY` is present, else the mock provider (`cohere/north-mini-code:free` defaults; strong model overridable via `OPENROUTER_STRONG_MODEL`). `createConfiguredExecutor()` uses the E2B executor when `E2B_API_KEY` is present, else a mock executor that reports unresolved.
 
 ## Current Constraints
 
-- Runs are persisted after the workflow completes; partial provider failures are not yet captured as durable partial runs.
-- Findings are currently synthesized deterministically from the final answer rather than parsed from structured model output.
+- The real E2B execution path is unproven without `E2B_API_KEY`; all automated tests use the mock executor.
+- The mock provider returns review-style prose, so local dev without a key does not exercise realistic extraction → execution (backlog).
+- Runs are persisted after the workflow completes; partial provider failures are not captured as durable partial runs.
+- Legacy persisted runs from the pre-repair shape are not migrated (backlog).
 - Prisma is present as the target schema, but runtime persistence still uses the local file store.
