@@ -10,10 +10,10 @@ import { listRuns } from "@/lib/store/file-store";
 export default async function DashboardPage() {
   const runs = await listRuns();
   const summaries = summarizeByWorkflow(runs);
-  const totalResolved = runs.filter((run) => run.evaluation.resolved).length;
+  const totalResolved = runs.filter((run) => run.evaluation?.resolved).length;
   const overallResolveRate = runs.length > 0 ? totalResolved / runs.length : 0;
   const overallAvgValue =
-    runs.length > 0 ? runs.reduce((sum, run) => sum + run.evaluation.valueScore, 0) / runs.length : 0;
+    runs.length > 0 ? runs.reduce((sum, run) => sum + (run.evaluation?.valueScore ?? 0), 0) / runs.length : 0;
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
@@ -131,8 +131,8 @@ export default async function DashboardPage() {
                       <CardDescription>{run.workflow}</CardDescription>
                     </CardHeader>
                     <CardContent className="text-muted-foreground text-sm">
-                      {run.evaluation.resolved ? "Resolved" : "Unresolved"} · {run.evaluation.testsPassed}/
-                      {run.evaluation.testsTotal} tests · Value {run.evaluation.valueScore.toFixed(1)}
+                      {run.evaluation?.resolved ? "Resolved" : "Unresolved"} · {run.evaluation?.testsPassed ?? 0}/
+                      {run.evaluation?.testsTotal ?? 0} tests · Value {(run.evaluation?.valueScore ?? 0).toFixed(1)}
                     </CardContent>
                   </Card>
                 </Link>
