@@ -16,7 +16,7 @@ Completed sessions are archived under `docs/iterations/archive/`:
   - [x] T1: `lib/dashboard/aggregate.ts` — `summarizeByWorkflow` / `chartableSummaries` / `WorkflowSummary` + unit tests (gating; shared contract). Tests live in `tests/dashboard-aggregate.test.ts` (project convention; `vitest.config` only discovers `tests/**`).
   - [x] T3: rewrite `components/dashboard/workflow-charts.tsx` to repair metrics — `ResolveRateVsCost` scatter + `ValueLeaderboard`; drop the review-era `quality` series/`WorkflowChartRow`.
   - [x] T2: wire `app/dashboard/page.tsx` to the aggregator (table parity) and replace the "full view in Phase 2" placeholder card with `<WorkflowCharts>`.
-  - [ ] T4: `app/datasets/[id]/page.tsx` — per-task cross-workflow comparison from `summarizeByWorkflow(relatedRuns)`.
+  - [x] T4: `app/datasets/[id]/page.tsx` — per-task cross-workflow comparison from `summarizeByWorkflow(relatedRuns)`.
   - [ ] T5: `app/datasets/page.tsx` — repair-first list columns.
   - [ ] T6: `app/page.tsx` — correct "code review" copy to repair framing.
 - [ ] Repair mode — Phase 3: heavy adapters (Defects4J or SWE-bench Lite) with repo checkout in the sandbox; Vercel Sandbox executor adapter; multi-language (Java) execution.
