@@ -1,16 +1,19 @@
 import Link from "next/link";
+import { WorkflowCharts } from "@/components/dashboard/workflow-charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
+import { chartableSummaries, summarizeByWorkflow } from "@/lib/dashboard/aggregate";
 import { listRuns } from "@/lib/store/file-store";
 
 export default async function DashboardPage() {
   const runs = await listRuns();
-  const rows = workflowKinds.map((workflow) => summarize(workflow, runs.filter((run) => run.workflow === workflow)));
-  const totalResolved = runs.filter((run) => run.evaluation.resolved).length;
+  const summaries = summarizeByWorkflow(runs);
+  const totalResolved = runs.filter((run) => run.evaluation?.resolved).length;
   const overallResolveRate = runs.length > 0 ? totalResolved / runs.length : 0;
+  const overallAvgValue =
+    runs.length > 0 ? runs.reduce((sum, run) => sum + (run.evaluation?.valueScore ?? 0), 0) / runs.length : 0;
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
@@ -56,22 +59,28 @@ export default async function DashboardPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Avg value score</CardDescription>
-                <CardTitle className="text-3xl">{avg(runs.map((run) => run.evaluation.valueScore)).toFixed(1)}</CardTitle>
+                <CardTitle className="text-3xl">{overallAvgValue.toFixed(1)}</CardTitle>
               </CardHeader>
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Repair metrics — full view in Phase 2</CardTitle>
-              <CardDescription>
-                Interactive resolve-rate and value-score charts will ship in the next dashboard phase.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-muted-foreground text-sm">
-              Per-workflow resolve rate and value score are available in the comparison table below.
-            </CardContent>
-          </Card>
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-xl font-semibold tracking-tight">Resolve rate vs cost</h2>
+              <p className="text-muted-foreground text-sm">
+                Per-workflow resolve rate and value score across completed and failed runs.
+              </p>
+            </div>
+            <WorkflowCharts
+              rows={chartableSummaries(summaries).map((s) => ({
+                workflow: s.workflow,
+                resolveRate: s.resolveRate,
+                avgValue: s.avgValue,
+                avgCost: s.avgCost,
+                count: s.count,
+              }))}
+            />
+          </div>
 
           <Card>
             <CardHeader>
@@ -91,16 +100,16 @@ export default async function DashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((row) => (
+                  {summaries.map((row) => (
                     <TableRow key={row.workflow}>
                       <TableCell className="font-medium">{row.workflow}</TableCell>
                       <TableCell>{row.count}</TableCell>
                       <TableCell>
                         {row.count === 0 ? "—" : `${(row.resolveRate * 100).toFixed(0)}% (${row.resolvedCount}/${row.count})`}
                       </TableCell>
-                      <TableCell>{row.count === 0 ? "—" : row.value.toFixed(1)}</TableCell>
-                      <TableCell>{row.count === 0 ? "—" : `$${row.cost.toFixed(4)}`}</TableCell>
-                      <TableCell>{row.count === 0 ? "—" : `${Math.round(row.latency)} ms`}</TableCell>
+                      <TableCell>{row.count === 0 ? "—" : row.avgValue.toFixed(1)}</TableCell>
+                      <TableCell>{row.count === 0 ? "—" : `$${row.avgCost.toFixed(4)}`}</TableCell>
+                      <TableCell>{row.count === 0 ? "—" : `${Math.round(row.avgLatencyMs)} ms`}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -122,8 +131,8 @@ export default async function DashboardPage() {
                       <CardDescription>{run.workflow}</CardDescription>
                     </CardHeader>
                     <CardContent className="text-muted-foreground text-sm">
-                      {run.evaluation.resolved ? "Resolved" : "Unresolved"} · {run.evaluation.testsPassed}/
-                      {run.evaluation.testsTotal} tests · Value {run.evaluation.valueScore.toFixed(1)}
+                      {run.evaluation?.resolved ? "Resolved" : "Unresolved"} · {run.evaluation?.testsPassed ?? 0}/
+                      {run.evaluation?.testsTotal ?? 0} tests · Value {(run.evaluation?.valueScore ?? 0).toFixed(1)}
                     </CardContent>
                   </Card>
                 </Link>
@@ -134,26 +143,4 @@ export default async function DashboardPage() {
       )}
     </main>
   );
-}
-
-function summarize(workflow: WorkflowKind, runs: Awaited<ReturnType<typeof listRuns>>) {
-  if (runs.length === 0) {
-    return { workflow, count: 0, resolvedCount: 0, resolveRate: 0, value: 0, cost: 0, latency: 0 };
-  }
-
-  const resolvedCount = runs.filter((run) => run.evaluation.resolved).length;
-
-  return {
-    workflow,
-    count: runs.length,
-    resolvedCount,
-    resolveRate: resolvedCount / runs.length,
-    value: avg(runs.map((run) => run.evaluation.valueScore)),
-    cost: avg(runs.map((run) => run.costUsd)),
-    latency: avg(runs.map((run) => run.latencyMs))
-  };
-}
-
-function avg(values: number[]): number {
-  return values.reduce((total, value) => total + value, 0) / values.length;
 }

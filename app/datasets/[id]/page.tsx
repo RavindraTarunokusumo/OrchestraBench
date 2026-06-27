@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { rerunDatasetAction } from "@/app/actions";
+import { WorkflowCharts } from "@/components/dashboard/workflow-charts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { chartableSummaries, summarizeByWorkflow } from "@/lib/dashboard/aggregate";
 import { workflowKinds } from "@/lib/domain/types";
 import { getDataset, listRuns } from "@/lib/store/file-store";
 
@@ -23,6 +26,7 @@ export default async function DatasetDetailPage({
     notFound();
   }
   const relatedRuns = (await listRuns()).filter((run) => run.benchmarkTaskId === task.id);
+  const taskSummaries = chartableSummaries(summarizeByWorkflow(relatedRuns));
   const knownBugs = task.knownBugs ?? [];
 
   return (
@@ -114,6 +118,55 @@ export default async function DatasetDetailPage({
                 </form>
               ) : (
                 <p className="text-muted-foreground text-sm">Rerun requires test code (repair benchmark task).</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {taskSummaries.length >= 2 ? (
+            <WorkflowCharts
+              rows={taskSummaries.map((s) => ({
+                workflow: s.workflow,
+                resolveRate: s.resolveRate,
+                avgValue: s.avgValue,
+                avgCost: s.avgCost,
+                count: s.count,
+              }))}
+            />
+          ) : null}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Workflow comparison</CardTitle>
+              <CardDescription>Averages across runs for this task, per workflow.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {taskSummaries.length === 0 ? (
+                <p className="text-muted-foreground text-sm">No runs yet for this task.</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Workflow</TableHead>
+                      <TableHead>Resolve rate</TableHead>
+                      <TableHead>Avg value</TableHead>
+                      <TableHead>Avg cost</TableHead>
+                      <TableHead>Avg latency</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {taskSummaries.map((row) => (
+                      <TableRow key={row.workflow}>
+                        <TableCell className="font-medium">{row.workflow}</TableCell>
+                        <TableCell>
+                          {(row.resolveRate * 100).toFixed(0)}% ({row.resolvedCount}/{row.count})
+                        </TableCell>
+                        <TableCell>{row.avgValue.toFixed(1)}</TableCell>
+                        <TableCell>${row.avgCost.toFixed(4)}</TableCell>
+                        <TableCell>{Math.round(row.avgLatencyMs)} ms</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
