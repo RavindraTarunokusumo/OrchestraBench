@@ -56,9 +56,11 @@ The canonical contract for delegating any unit of work — implementation tasks 
 
 **Invoke** (headless, single-turn, no TUI):
 ```
-grok -p "<self-contained prompt>" --yolo --output-format json
+grok -p "<self-contained prompt>" -m grok-composer-2.5-fast --effort <LEVEL> --yolo --output-format json
 ```
 - `-p` / `--single`: headless single-turn mode; creates an ephemeral chat session.
+- `-m` / `--model`: model name; always use Composer 2.5 Fast for any task.
+- `--effort`: set thinking level; choose between `high` or `xhigh` depending on task difficulty.
 - `--yolo` (or `--always-approve`): auto-approves tools so the delegation runs unattended.
 - `--output-format json`: returns structured output including `text` (final summary) and `sessionId` (required for cleanup).
 
