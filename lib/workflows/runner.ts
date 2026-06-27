@@ -94,7 +94,7 @@ export async function runWorkflow({
       const judge = await executeCall(state, provider, "judge", {
         role: "judge",
         model: CHEAP_MODEL,
-        prompt: `Compare these panel reports and synthesize the best answer:\n${panelCalls
+        prompt: `Merge these candidate fixes into one corrected version of the code. Return only the corrected code in a single code block, no explanation.\n${panelCalls
           .map((call) => call.response)
           .join("\n\n")}`
       });

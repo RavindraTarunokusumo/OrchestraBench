@@ -42,13 +42,19 @@ export const quixbugsAdapter: BenchmarkAdapter = {
       } catch {
         continue; // skip programs without testcases
       }
+      let referenceFix: string;
+      try {
+        referenceFix = await readProgram(correctDir, file);
+      } catch {
+        continue; // skip programs without correct source
+      }
       tasks.push({
         id: `quixbugs_${name}`,
         title: name,
         language: "python",
         prompt: PROMPT,
         code: await readProgram(buggyDir, file),
-        referenceFix: await readProgram(correctDir, file),
+        referenceFix,
         testCode: buildTestCode(name, casesJsonl),
         entryPoint: name,
         source: "quixbugs",

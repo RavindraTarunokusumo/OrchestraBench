@@ -38,14 +38,19 @@ export async function createRun(input: RunInput): Promise<RunResult> {
 }
 
 export async function resolveRunInput(input: RunInput): Promise<RunInput> {
-  if (input.testCode || !input.benchmarkTaskId) {
+  if (!input.benchmarkTaskId) {
     return input;
   }
   const task = await getDataset(input.benchmarkTaskId);
   if (!task) {
     return input;
   }
-  return { ...input, code: input.code || task.code, testCode: task.testCode, entryPoint: task.entryPoint };
+  return {
+    ...input,
+    code: input.code || task.code,
+    testCode: input.testCode ?? task.testCode,
+    entryPoint: input.entryPoint ?? task.entryPoint
+  };
 }
 
 export async function saveRun(result: RunResult): Promise<RunResult> {

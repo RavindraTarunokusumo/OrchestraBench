@@ -20,4 +20,9 @@ describe("extractCode", () => {
     const answer = "```python\nx=1\n```\nthen\n```python\ndef big():\n    return 2\n```";
     expect(extractCode(answer)).toBe("def big():\n    return 2");
   });
+
+  it("extracts code from a single-line fenced block", () => {
+    const answer = "```python def f(): pass```";
+    expect(extractCode(answer)).toBe("def f(): pass");
+  });
 });
