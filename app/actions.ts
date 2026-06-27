@@ -5,12 +5,10 @@ import { z } from "zod";
 import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
 import {
   createDatasetTask,
-  createRun,
   rerunDatasetTask,
   updateRunEvaluation
 } from "@/lib/store/file-store";
 
-const workflowSchema = z.enum(workflowKinds);
 const optionalPositiveNumber = z.preprocess(
   (value) => (value === "" || value === null || value === undefined ? undefined : value),
   z.coerce.number().positive().optional()
@@ -25,15 +23,6 @@ const optionalTrimmedString = z.preprocess(
   z.string().trim().optional()
 );
 
-const runSchema = z.object({
-  title: z.string().trim().min(1),
-  language: z.string().trim().min(1),
-  prompt: z.string().trim().min(1),
-  code: z.string().trim().min(1),
-  workflow: workflowSchema,
-  costLimitUsd: optionalPositiveNumber
-});
-
 const datasetSchema = z.object({
   title: z.string().trim().min(1),
   language: z.string().trim().min(1),
@@ -44,15 +33,6 @@ const datasetSchema = z.object({
   knownBugSeverity: z.enum(["low", "medium", "high", "critical"]).optional(),
   tags: z.string().trim().optional()
 });
-
-export async function createRunAction(formData: FormData): Promise<void> {
-  const parsed = runSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    redirect("/runs/new?error=invalid");
-  }
-  const run = await createRun(parsed.data);
-  redirect(`/runs/${run.id}`);
-}
 
 export async function feedbackAction(formData: FormData): Promise<void> {
   const runId = z.string().min(1).safeParse(formData.get("runId"));
@@ -96,5 +76,8 @@ export async function rerunDatasetAction(formData: FormData): Promise<void> {
   const costLimitRaw = formData.get("costLimitUsd");
   const costLimitUsd = optionalPositiveNumber.parse(costLimitRaw);
   const result = await rerunDatasetTask(taskId.data, selectedWorkflows, costLimitUsd);
+  if (result.runs.length === 0) {
+    redirect(`/datasets/${taskId.data}?error=rerun-failed`);
+  }
   redirect(result.runs.length === 1 ? `/runs/${result.runs[0].id}` : "/dashboard");
 }
