@@ -17,7 +17,7 @@ Completed sessions are archived under `docs/iterations/archive/`:
   - [x] T3: rewrite `components/dashboard/workflow-charts.tsx` to repair metrics — `ResolveRateVsCost` scatter + `ValueLeaderboard`; drop the review-era `quality` series/`WorkflowChartRow`.
   - [x] T2: wire `app/dashboard/page.tsx` to the aggregator (table parity) and replace the "full view in Phase 2" placeholder card with `<WorkflowCharts>`.
   - [x] T4: `app/datasets/[id]/page.tsx` — per-task cross-workflow comparison from `summarizeByWorkflow(relatedRuns)`.
-  - [ ] T5: `app/datasets/page.tsx` — repair-first list columns.
+  - [x] T5: `app/datasets/page.tsx` — repair-first list columns.
   - [ ] T6: `app/page.tsx` — correct "code review" copy to repair framing.
 - [ ] Repair mode — Phase 3: heavy adapters (Defects4J or SWE-bench Lite) with repo checkout in the sandbox; Vercel Sandbox executor adapter; multi-language (Java) execution.
 - [ ] Dedicated `/workflows` guide page (deferred from the UI overhaul).

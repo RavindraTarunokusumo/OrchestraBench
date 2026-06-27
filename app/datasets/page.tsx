@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { listDatasets } from "@/lib/store/file-store";
+import { listDatasets, listRuns } from "@/lib/store/file-store";
 
 export default async function DatasetsPage() {
-  const datasets = await listDatasets();
+  const [datasets, runs] = await Promise.all([listDatasets(), listRuns()]);
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
@@ -35,24 +35,32 @@ export default async function DatasetsPage() {
                       <TableHead>Title</TableHead>
                       <TableHead>Source</TableHead>
                       <TableHead>Language</TableHead>
-                      <TableHead>Known bugs</TableHead>
+                      <TableHead>Runs</TableHead>
+                      <TableHead>Resolved</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {datasets.map((task) => (
-                      <TableRow key={task.id}>
-                        <TableCell>
-                          <Link href={`/datasets/${task.id}`} className="font-medium hover:underline">
-                            {task.title}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{task.source}</TableCell>
-                        <TableCell>{task.language}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {task.knownBugs?.length ?? 0} known bug(s)
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {datasets.map((task) => {
+                      const relatedRuns = runs.filter((run) => run.benchmarkTaskId === task.id);
+                      const runCount = relatedRuns.length;
+                      const resolvedCount = relatedRuns.filter((run) => run.evaluation.resolved).length;
+
+                      return (
+                        <TableRow key={task.id}>
+                          <TableCell>
+                            <Link href={`/datasets/${task.id}`} className="font-medium hover:underline">
+                              {task.title}
+                            </Link>
+                          </TableCell>
+                          <TableCell>{task.source}</TableCell>
+                          <TableCell>{task.language}</TableCell>
+                          <TableCell>{runCount}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {runCount === 0 ? "—" : `${resolvedCount}/${runCount}`}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
