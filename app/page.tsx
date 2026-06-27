@@ -40,9 +40,9 @@ export default async function HomePage() {
         <div className="flex flex-col gap-3">
           <h1 className="text-4xl font-semibold tracking-tight">OrchestraBench</h1>
           <p className="text-muted-foreground max-w-2xl text-lg">
-            An adaptive multi-model orchestration benchmarker for code review. It tests whether
-            running several models together actually beats a single model once you account for
-            real cost, latency, and quality constraints.
+            An adaptive multi-model orchestration benchmarker for automated code repair. It tests
+            whether running several models together resolves more bugs and passes more tests than a
+            single model once you account for real cost and latency.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3 sm:justify-start">
