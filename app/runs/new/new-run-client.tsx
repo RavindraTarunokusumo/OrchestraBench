@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRunStream } from "@/components/orchestration/use-run-stream";
 import { OrchestrationCanvas } from "@/components/orchestration/canvas";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,13 +12,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
+import { extractCode } from "@/lib/workflows/extract-code";
 import { workflowLabels } from "@/lib/workflows/labels";
 
 const DEFAULTS = {
-  title: "Review auth helper",
-  language: "TypeScript",
-  prompt: "Find correctness, security, and edge-case bugs. Return concrete findings with severity and fixes.",
-  code: "function canDelete(user?: { role: string }) {\n  return user!.role === 'admin';\n}",
+  title: "gcd repair",
+  language: "python",
+  prompt: "Fix the bug in this function so all tests pass. Return only the corrected code in a single code block.",
+  code: "def gcd(a, b):\n    if b == 0:\n        return a\n    else:\n        return gcd(a % b, b)",
+  testCode: "assert gcd(4, 2) == 2\nassert gcd(35, 21) == 7",
   workflow: "cheap_first" as WorkflowKind,
   costLimitUsd: ""
 };
@@ -27,19 +30,34 @@ export function NewRunClient() {
   const [language, setLanguage] = useState(DEFAULTS.language);
   const [prompt, setPrompt] = useState(DEFAULTS.prompt);
   const [code, setCode] = useState(DEFAULTS.code);
+  const [testCode, setTestCode] = useState(DEFAULTS.testCode);
   const [workflow, setWorkflow] = useState<WorkflowKind>(DEFAULTS.workflow);
   const [costLimitUsd, setCostLimitUsd] = useState(DEFAULTS.costLimitUsd);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const { status, graph, nodeStates, totals, escalation, finalRunId, finalSummary, error, start } = useRunStream();
+  const { status, graph, nodeStates, totals, escalation, finalRunId, finalSummary, executionResult, error, start } =
+    useRunStream();
 
   const isRunning = status === "running";
   const isTerminal = status === "complete" || status === "failed";
+
+  const candidateCode = useMemo(() => {
+    const previews = Object.values(nodeStates)
+      .map((node) => node.responsePreview ?? "")
+      .filter((preview) => preview.length > 0);
+    if (previews.length === 0) return "";
+    const longest = previews.reduce((best, preview) => (preview.length > best.length ? preview : best));
+    return extractCode(longest);
+  }, [nodeStates]);
 
   function handleSubmit(formEvent: React.FormEvent) {
     formEvent.preventDefault();
     if (!title.trim() || !language.trim() || !prompt.trim() || !code.trim()) {
       setValidationError("Title, language, prompt, and code are all required.");
+      return;
+    }
+    if (!testCode.trim()) {
+      setValidationError("Test code is required for ad-hoc runs.");
       return;
     }
     const parsedCostLimit = costLimitUsd.trim() === "" ? undefined : Number(costLimitUsd);
@@ -53,6 +71,7 @@ export function NewRunClient() {
       language: language.trim(),
       prompt: prompt.trim(),
       code: code.trim(),
+      testCode: testCode.trim(),
       workflow,
       costLimitUsd: parsedCostLimit
     });
@@ -65,9 +84,14 @@ export function NewRunClient() {
       language: DEFAULTS.language,
       prompt: DEFAULTS.prompt,
       code: DEFAULTS.code,
+      testCode: DEFAULTS.testCode,
       workflow: DEFAULTS.workflow
     });
   }
+
+  const resolved = finalSummary?.resolved ?? executionResult?.resolved ?? false;
+  const testsPassed = finalSummary?.testsPassed ?? executionResult?.testsPassed ?? 0;
+  const testsTotal = finalSummary?.testsTotal ?? executionResult?.testsTotal ?? 0;
 
   return (
     <div className="flex flex-col gap-6">
@@ -87,9 +111,7 @@ export function NewRunClient() {
         <Card>
           <CardHeader>
             <CardTitle>Orchestration in progress</CardTitle>
-            <CardDescription>
-              Workflow: {workflowLabels[workflow]}
-            </CardDescription>
+            <CardDescription>Workflow: {workflowLabels[workflow]}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <OrchestrationCanvas
@@ -103,13 +125,38 @@ export function NewRunClient() {
             />
 
             {isTerminal && finalSummary && (
-              <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/20 p-4 sm:grid-cols-4">
-                <SummaryStat label="Status" value={finalSummary.status} />
-                <SummaryStat label="Quality score" value={finalSummary.qualityScore.toFixed(2)} />
-                <SummaryStat label="Value score" value={finalSummary.valueScore.toFixed(2)} />
-                <SummaryStat label="Findings" value={String(finalSummary.findingsCount)} />
-                <SummaryStat label="Cost" value={`$${finalSummary.costUsd.toFixed(4)}`} />
-                <SummaryStat label="Latency" value={`${finalSummary.latencyMs.toLocaleString()}ms`} />
+              <div className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant={resolved ? "default" : "destructive"}>
+                    {resolved ? "Resolved ✓" : "Unresolved ✗"}
+                  </Badge>
+                  <Badge variant="outline">
+                    {testsPassed}/{testsTotal} tests passed
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <SummaryStat label="Status" value={finalSummary.status} />
+                  <SummaryStat label="Tests" value={`${testsPassed}/${testsTotal}`} />
+                  <SummaryStat label="Cost" value={`$${finalSummary.costUsd.toFixed(4)}`} />
+                  <SummaryStat label="Latency" value={`${finalSummary.latencyMs.toLocaleString()}ms`} />
+                  <SummaryStat label="Value score" value={finalSummary.valueScore.toFixed(2)} />
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium">Buggy code</h3>
+                    <pre className="bg-muted overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
+                      {code}
+                    </pre>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium">Candidate fix</h3>
+                    <pre className="bg-muted overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
+                      {candidateCode || "(no code extracted yet)"}
+                    </pre>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -133,7 +180,7 @@ export function NewRunClient() {
         <Card className={isRunning ? "opacity-60" : undefined}>
           <CardHeader>
             <CardTitle>Task details</CardTitle>
-            <CardDescription>What should the orchestration review?</CardDescription>
+            <CardDescription>Provide the buggy code and repair instructions.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
@@ -147,7 +194,7 @@ export function NewRunClient() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="prompt">Review instructions</Label>
+              <Label htmlFor="prompt">Repair instructions</Label>
               <Textarea
                 id="prompt"
                 value={prompt}
@@ -158,7 +205,7 @@ export function NewRunClient() {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="code">Code or context</Label>
+              <Label htmlFor="code">Buggy code</Label>
               <Textarea
                 id="code"
                 value={code}
@@ -168,6 +215,22 @@ export function NewRunClient() {
                 className="font-mono"
                 required
               />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="testCode">Test code</Label>
+              <Textarea
+                id="testCode"
+                value={testCode}
+                disabled={isRunning}
+                onChange={(changeEvent) => setTestCode(changeEvent.target.value)}
+                rows={4}
+                className="font-mono"
+                placeholder="assert gcd(4, 2) == 2"
+                required
+              />
+              <p className="text-muted-foreground text-xs">
+                Required for ad-hoc runs. Benchmark tasks supply test code server-side when selected.
+              </p>
             </div>
           </CardContent>
         </Card>

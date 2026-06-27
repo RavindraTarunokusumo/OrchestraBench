@@ -31,6 +31,8 @@ const workflowCopy: Record<WorkflowKind, { name: string; description: string }> 
 export default async function HomePage() {
   const runs = await listRuns();
   const recentRuns = runs.slice(0, 5);
+  const resolvedCount = runs.filter((run) => run.evaluation.resolved).length;
+  const resolveRate = runs.length > 0 ? resolvedCount / runs.length : 0;
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-12 px-6 py-12">
@@ -82,7 +84,11 @@ export default async function HomePage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Recent runs</h2>
-            <p className="text-muted-foreground">The latest results across all workflows.</p>
+            <p className="text-muted-foreground">
+              {runs.length === 0
+                ? "The latest results across all workflows."
+                : `${runs.length} run(s) · ${(resolveRate * 100).toFixed(0)}% resolve rate`}
+            </p>
           </div>
           {recentRuns.length > 0 && (
             <Button asChild variant="ghost">
@@ -114,8 +120,8 @@ export default async function HomePage() {
                   </CardHeader>
                   <CardContent className="text-muted-foreground flex flex-col gap-1 text-sm">
                     <span>
-                      Quality {run.evaluation.qualityScore.toFixed(1)} · Value{" "}
-                      {run.evaluation.valueScore.toFixed(1)}
+                      {run.evaluation.resolved ? "Resolved" : "Unresolved"} · {run.evaluation.testsPassed}/
+                      {run.evaluation.testsTotal} tests · Value {run.evaluation.valueScore.toFixed(1)}
                     </span>
                     <span>${run.costUsd.toFixed(4)} · {Math.round(run.latencyMs)} ms</span>
                   </CardContent>

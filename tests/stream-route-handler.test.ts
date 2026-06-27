@@ -12,6 +12,7 @@ const validBody = {
   language: "TypeScript",
   prompt: "Find bugs in this code.",
   code: "function isAllowed(user?: { role: string }) { return user!.role === 'admin' }",
+  testCode: "assert isAllowed({ role: 'admin' })",
   workflow: "single_cheap"
 };
 
@@ -45,7 +46,9 @@ describe("POST /api/runs/stream", () => {
     const terminalEvent = events.at(-1);
     expect(terminalEvent?.type).toBe("run-final");
     if (terminalEvent?.type === "run-final") {
-      expect(terminalEvent.status).toBe("completed");
+      // The route's default executor (no E2B_API_KEY) returns an unresolved
+      // result, so the run is persisted as "partial" rather than "completed".
+      expect(terminalEvent.status).toBe("partial");
     }
   });
 

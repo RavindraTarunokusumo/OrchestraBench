@@ -10,15 +10,6 @@ const optionalPositiveNumber = z.preprocess(
   z.coerce.number().positive().optional()
 );
 
-const knownBugSchema = z.object({
-  id: z.string().trim().min(1),
-  title: z.string().trim().min(1),
-  description: z.string().trim().min(1),
-  severity: severitySchema,
-  filePath: z.string().trim().min(1).optional(),
-  line: z.number().int().positive().optional()
-});
-
 export const createRunSchema = z.object({
   title: z.string().trim().min(1),
   language: z.string().trim().min(1),
@@ -27,7 +18,8 @@ export const createRunSchema = z.object({
   workflow: workflowSchema,
   costLimitUsd: optionalPositiveNumber,
   benchmarkTaskId: z.string().trim().min(1).optional(),
-  knownBugs: z.array(knownBugSchema).optional()
+  testCode: z.string().trim().min(1).optional(),
+  entryPoint: z.string().trim().min(1).optional()
 });
 
 export const createDatasetSchema = z.object({

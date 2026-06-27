@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { RunResult } from "@/lib/domain/types";
 import { getRun, saveRun } from "@/lib/store/file-store";
 import { createMockProvider } from "@/lib/providers/mock-provider";
+import { createMockExecutor } from "@/lib/execution/mock-executor";
 import { runWorkflow } from "@/lib/workflows/runner";
 import type { WorkflowEvent } from "@/lib/workflows/events";
 
@@ -10,6 +11,7 @@ const baseInput = {
   language: "TypeScript",
   prompt: "Find bugs in this code.",
   code: "function isAllowed(user?: { role: string }) { return user!.role === 'admin' }",
+  testCode: "assert isAllowed({ role: 'admin' })",
   costLimitUsd: 0.02
 };
 
@@ -24,14 +26,23 @@ function buildHandRolledRunResult(): RunResult {
     code: "export const ok = true;",
     providerLabel: "Mock provider",
     finalAnswer: "No bugs found.",
-    findings: [],
+    candidateCode: "export const ok = true;",
+    execution: {
+      resolved: true,
+      testsPassed: 1,
+      testsTotal: 1,
+      exitCode: 0,
+      timedOut: false,
+      stdout: "",
+      stderr: "",
+      durationMs: 0,
+      backend: "mock"
+    },
     calls: [],
     evaluation: {
-      truePositives: 0,
-      falsePositives: 0,
-      missedKnownBugs: 0,
-      highSeverityTruePositives: 0,
-      qualityScore: 0.5,
+      resolved: true,
+      testsPassed: 1,
+      testsTotal: 1,
       valueScore: 0.5,
       judgeConfidence: 0.5
     },
@@ -64,6 +75,7 @@ describe("SSE serialization (route-equivalent)", () => {
     const result = await runWorkflow({
       input: { ...baseInput, workflow: "single_cheap" },
       provider: createMockProvider(),
+      executor: createMockExecutor({ resolved: true, testsPassed: 1, testsTotal: 1 }),
       onEvent: send
     });
     const saved = await saveRun(result);
@@ -73,8 +85,9 @@ describe("SSE serialization (route-equivalent)", () => {
       status: saved.status,
       costUsd: saved.costUsd,
       latencyMs: saved.latencyMs,
-      findingsCount: saved.findings.length,
-      qualityScore: saved.evaluation.qualityScore,
+      resolved: saved.execution.resolved,
+      testsPassed: saved.execution.testsPassed,
+      testsTotal: saved.execution.testsTotal,
       valueScore: saved.evaluation.valueScore
     });
 
@@ -94,8 +107,9 @@ describe("SSE serialization (route-equivalent)", () => {
       expect(finalEvent.status).toBe("completed");
       expect(finalEvent.costUsd).toBe(saved.costUsd);
       expect(finalEvent.latencyMs).toBe(saved.latencyMs);
-      expect(finalEvent.findingsCount).toBe(saved.findings.length);
-      expect(finalEvent.qualityScore).toBe(saved.evaluation.qualityScore);
+      expect(finalEvent.resolved).toBe(saved.execution.resolved);
+      expect(finalEvent.testsPassed).toBe(saved.execution.testsPassed);
+      expect(finalEvent.testsTotal).toBe(saved.execution.testsTotal);
       expect(finalEvent.valueScore).toBe(saved.evaluation.valueScore);
     }
 

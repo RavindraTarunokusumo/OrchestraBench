@@ -97,3 +97,19 @@ describe("API request parsers", () => {
     });
   });
 });
+
+describe("createRunSchema repair fields", () => {
+  it("accepts testCode and entryPoint", () => {
+    const input = parseRunCreateRequest({
+      title: "gcd",
+      language: "python",
+      prompt: "Fix the bug.",
+      code: "def gcd(a, b): return a",
+      workflow: "single_cheap",
+      testCode: "assert gcd(4, 2) == 2",
+      entryPoint: "gcd"
+    });
+    expect(input.testCode).toBe("assert gcd(4, 2) == 2");
+    expect(input.entryPoint).toBe("gcd");
+  });
+});

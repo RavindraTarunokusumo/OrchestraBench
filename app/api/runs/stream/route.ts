@@ -1,6 +1,7 @@
 import { createRunSchema, formatZodErrors } from "@/lib/api/contracts";
+import { createConfiguredExecutor } from "@/lib/execution/provider";
 import { createConfiguredProvider } from "@/lib/providers/provider";
-import { saveRun } from "@/lib/store/file-store";
+import { resolveRunInput, saveRun } from "@/lib/store/file-store";
 import { runWorkflow } from "@/lib/workflows/runner";
 import type { WorkflowEvent } from "@/lib/workflows/events";
 
@@ -33,7 +34,9 @@ export async function POST(request: Request) {
 
       try {
         const provider = createConfiguredProvider();
-        const result = await runWorkflow({ input, provider, onEvent: send });
+        const executor = createConfiguredExecutor();
+        const resolved = await resolveRunInput(input);
+        const result = await runWorkflow({ input: resolved, provider, executor, onEvent: send });
         const saved = await saveRun(result);
         send({
           type: "run-final",
@@ -41,8 +44,9 @@ export async function POST(request: Request) {
           status: saved.status,
           costUsd: saved.costUsd,
           latencyMs: saved.latencyMs,
-          findingsCount: saved.findings.length,
-          qualityScore: saved.evaluation.qualityScore,
+          resolved: saved.execution.resolved,
+          testsPassed: saved.execution.testsPassed,
+          testsTotal: saved.execution.testsTotal,
           valueScore: saved.evaluation.valueScore
         });
       } catch (error) {

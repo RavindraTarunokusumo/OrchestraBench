@@ -31,8 +31,8 @@ Rules:
 
 1. (Preamble) Ensure you're in a dedicated local branch/worktree under `.worktree/<session-name>` and activate the project environment (see [docs/commands.md](docs/commands.md)). Read the `docs/insights.md` file and the [Workflow Rules](#workflow-rules).
 2. (GitNexus) Read the [GitNexus](#gitnexus--code-intelligence) section at the start of every session.
-3. (Spec Writing) For feature implementation, write a detailed specification document following a spec-driven development process (requirements, data models, interfaces, workflows, edge cases, success criteria, and constraints). Do not write implementation plans or code until the spec is complete and accepted. Read the docs (see [Project Map](#project-map)) and use GitNexus as your primary means to understand the codebase. For debugging or minor patching, skip this step.
-4. (Implementing) Log tasks and sub-items in `TODO.md` first, then use the `/subagent-driven-development` skill to implement the tasks. Run `npm run lint` (and typecheck/tests) before each commit and attach a git note afterwards using the [template](.github/git_notes_template.md). Cross each sub-items and items once done.
+3. (Spec Writing + Lightweight Plan) For feature implementation, write a detailed specification document following a spec-driven development process (requirements, data models, interfaces, workflows, edge cases, success criteria, and constraints). Do not write implementation plans or code until the spec is complete and accepted. Read the docs (see [Project Map](#project-map)) and use GitNexus as your primary means to understand the codebase. For debugging or minor patching, skip this step. Once the spec is accepted, produce a **lightweight implementation plan** that serves as the Grok implementer's contract — file structure, task decomposition, per-task **Interfaces** (Consumes/Produces signatures), build order, and risks. Do **not** inline verbatim per-step code or exact shell commands; the implementer regenerates those from the contract. The plan's value is the cross-task contract (who calls what, in what order), not transcribed code — that contract is what catches the class of bug a narrowly-scoped implementer cannot see (e.g. a changed signature breaking another caller). This preserves the spec→plan→implementation independent-verification chain at a fraction of the planning cost.
+4. (Implementing) Log tasks and sub-items in `TODO.md` first, then implement each task by delegating to a **Grok subagent as the implementer** via the non-interactive CLI (`grok -p "<task instructions>" --yolo --output-format json`), one ephemeral session per task (per the [Grok Build Implementation/Review Handoff](#grok-build-implementationreview-handoff)). Capture the `sessionId` from the JSON result, review and validate the produced changes, run `npm run lint` (and typecheck/tests) before each commit, attach a git note afterwards using the [template](.github/git_notes_template.md), then delete the ephemeral `~/.grok/sessions/.../<sessionId>` directory for that implementation subagent. Commit any files the subagent wrote immediately (per Workflow Rule 9). Cross each sub-item and item once done. Where the task graph allows — independent tasks with disjoint files and no shared dependency on unlanded work — run multiple implementer subagents in parallel using isolated git worktrees; otherwise implement sequentially. After each delegated task, the main agent independently validates with the **full** test suite plus typecheck and lint before committing — never trust the implementer's scoped self-report (it grades only against its narrow task scope and will report green while a cross-cutting change, e.g. a modified signature breaking another caller, stays broken). Also review the diff and normalize implementer output (e.g. trailing newlines) during review. If Grok fails, fall back to the `/subagent-driven-development` skill.
 5. (Submit PR) Finally, follow the instructions in the [Submit PR](#submit-pr) workflow — using non-interactive `grok -p` commands where possible to trigger reviews — and notify the user once every step has been completed. If Grok fails, spawn native subagents as a fallback.
 6. (Post-PR) Update documentation files once the PR has been merged and archive completed TODO items from `TODO.md` into `docs/iterations/archive/`; ensure each subitem in the TODO are tagged with the commit hash and each session are tagged with the merge ID - `TODO.md` should only contain **active or future** work only.
 7. (Reflection) Conclude the session by doing the [Reflection](#reflection) exercise. After receiving confirmation from the user, delete the worktree and branch.
@@ -48,6 +48,36 @@ Rules:
 7. After submitting the PR, delegate the code review (and optional security review) to Grok as ephemeral subagent sessions via the non-interactive CLI (`grok -p ... --output-format json --yolo`). Capture the `sessionId` from the JSON result, process the review output/side-effects (e.g. PENDING review posts), then immediately delete the corresponding `~/.grok/sessions/.../<sessionId>` directory for that security-review or code-review subagent task. See the detailed examples and cleanup logic in the [Submit PR](#submit-pr) section. Do not rely on GitHub Copilot Code Review. Rigorously address findings using the reception protocol.
 8. After context compaction resumes, run `git status` before any other action — the summary describes intent, not exact commit state.
 9. Commit any files written by subagents immediately; do not advance the workflow with a dirty tree. For Grok-based subagents (security-review, bundled code-review, etc.), always capture the sessionId via `--output-format json` and delete the ephemeral chat session directory after the delegation completes and findings are processed.
+10. After a delegated implementation task, validate with the **full** suite + typecheck + lint (not the implementer's scoped tests) before committing. A per-task implementer self-scopes its own verification and structurally cannot see cross-task breakage (e.g. a changed signature breaking another caller); only the full project-level run catches it.
+
+### Grok Build Implementation/Review Handoff
+
+The canonical contract for delegating any unit of work — implementation tasks (Step 4) or PR reviews ([Submit PR](#submit-pr)) — to an ephemeral Grok subagent. Both flows share this mechanism; only the prompt and the post-processing differ.
+
+**Invoke** (headless, single-turn, no TUI):
+```
+grok -p "<self-contained prompt>" -m grok-composer-2.5-fast --effort <LEVEL> --yolo --output-format json
+```
+- `-p` / `--single`: headless single-turn mode; creates an ephemeral chat session.
+- `-m` / `--model`: model name; always use Composer 2.5 Fast for any task.
+- `--effort`: set thinking level; choose between `high` or `xhigh` depending on task difficulty.
+- `--yolo` (or `--always-approve`): auto-approves tools so the delegation runs unattended.
+- `--output-format json`: returns structured output including `text` (final summary) and `sessionId` (required for cleanup).
+
+**Prompt** must be self-contained — the subagent starts cold with no session context: point it at the exact spec/plan section or PR number, name the precise file scope, and state the boundaries. For implementation, forbid all git operations (the main agent commits) and require a single trailing newline on every file (Grok consistently omits these). For review, let the invoked skill post its PENDING GitHub review as a side-effect.
+
+**Capture + process** the JSON `text` and `sessionId`:
+- *Implementation:* review the diff, normalize output, then validate per [Workflow Rule 10](#workflow-rules) (full suite + typecheck + lint) and commit with specific staging + a git note.
+- *Review:* process findings via the receiving-code-review reception protocol (see the [Submit PR](#submit-pr) section).
+
+**Clean up (always)** — delete the ephemeral session directory under `~/.grok/sessions/<encoded-cwd>/<sessionId>/`:
+```powershell
+Get-ChildItem -Path "$env:USERPROFILE\.grok\sessions" -Recurse -Directory -Filter $sessionId |
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+```
+Bash equivalent: `find "$HOME/.grok/sessions" -type d -name "$sessionId" -prune -exec rm -rf {} +`
+
+**Parallelism:** where the task graph allows (disjoint files, no shared dependency on unlanded work), run multiple handoffs in isolated git worktrees; otherwise sequential.
 
 ### Submit PR
 
@@ -68,29 +98,11 @@ Rules:
        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
    ```
 
-3. Non-interactively generate the main professional code review by delegating to the Grok bundled reviewer as a subagent. This uses an ephemeral Grok chat session. Capture the session ID from JSON output, let the skill post the PENDING review as a side-effect, then delete the session when done (no TUI, clean final output only):
-   ```powershell
-   $prNum = gh pr view --json number -q .number
-   $prompt = "Use /bundled:review --pr #$prNum. The skill should post a PENDING GitHub review. After it completes, provide a very brief summary of what was done."
-   $json = grok -p $prompt --yolo --output-format json
-   $reviewSummary = ($json | ConvertFrom-Json).text
-   $sessionId = ($json | ConvertFrom-Json).sessionId
-
-   # Main agent processes the summary. The PENDING review was already posted by the Grok skill.
-
-   # Delete the ephemeral Grok subagent chat session for this code-review task
-   Get-ChildItem -Path "$env:USERPROFILE\.grok\sessions" -Recurse -Directory -Filter $sessionId |
-       Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+3. Generate the main professional code review by delegating the Grok bundled reviewer per the [Grok Build Implementation/Review Handoff](#grok-build-implementationreview-handoff). Capture the PR number first (`$prNum = gh pr view --json number -q .number`) and use the review prompt:
    ```
-
-   **Key points for Grok-as-subagent delegation (main agent e.g. Claude Code):**
-   - `-p` / `--single`: Headless single-turn mode — creates an ephemeral chat session, no interactive terminal/TUI.
-   - `--yolo` (or `--always-approve`): Auto-approves tools so the delegated review runs unattended.
-   - `--output-format json`: Returns structured output including `text` (the final summary) and `sessionId` (required for later cleanup). The actual review work and any PENDING GitHub posts happen inside the Grok invocation.
-   - After the main agent has used the review output/findings, immediately delete the session directory to remove the ephemeral chat history for that security-review or code-review subagent task.
-   - The session directories live under `~/.grok/sessions/<encoded-cwd>/<session-id>/`. The recursive filter by exact session ID is reliable across worktrees.
-
-   The invoked skills handle the heavy lifting (diff collection, subagent reviewer persona, posting PENDING reviews where applicable). The `grok -p` wrapper is just the delegation + cleanup mechanism.
+   Use /bundled:review --pr #$prNum. The skill should post a PENDING GitHub review. After it completes, provide a very brief summary of what was done.
+   ```
+   The skill does the heavy lifting (diff collection, reviewer persona, posting the PENDING GitHub review as a side-effect); the handoff is just the delegation + cleanup wrapper. Capture the returned `sessionId`, process the summary, then delete the session per the handoff. Do not rely on GitHub Copilot Code Review.
 
 - Rigorously address the review findings before considering the task complete. Use the reception protocol defined in [.codex/skills/receiving-code-review/SKILL.md](.codex/skills/receiving-code-review/SKILL.md):
   - Read the full feedback first.
@@ -155,3 +167,47 @@ The agent must not:
 - Success criteria listed in SPEC.md.
 
 See [SPEC.md](SPEC.md) for full requirements and milestones.
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **OrchestraBench** (1228 symbols, 2290 relationships, 102 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `gitnexus_impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `gitnexus_detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `gitnexus_query({query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `gitnexus_context({name: "symbolName"})`.
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `gitnexus_impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `gitnexus_rename` which understands the call graph.
+- NEVER commit changes without running `gitnexus_detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/OrchestraBench/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/OrchestraBench/clusters` | All functional areas |
+| `gitnexus://repo/OrchestraBench/processes` | All execution flows |
+| `gitnexus://repo/OrchestraBench/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->

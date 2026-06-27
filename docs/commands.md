@@ -11,6 +11,8 @@ Copy-Item .env.example .env.local
 
 `OPENROUTER_API_KEY` is optional. Without it, the app uses the deterministic mock provider.
 
+`E2B_API_KEY` is optional. Without it, the app uses the mock sandbox executor for code-repair runs. Set it to run candidate fixes against real tests in an E2B cloud sandbox. Get a key at [e2b.dev](https://e2b.dev).
+
 ## Development
 
 ```powershell

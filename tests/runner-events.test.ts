@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { createMockExecutor } from "@/lib/execution/mock-executor";
 import { runWorkflow } from "@/lib/workflows/runner";
 import { createMockProvider } from "@/lib/providers/mock-provider";
 import type { WorkflowKind } from "@/lib/domain/types";
 import type { WorkflowEvent } from "@/lib/workflows/events";
+
+const mockExecutor = createMockExecutor({ resolved: true, testsPassed: 1, testsTotal: 1 });
 
 const baseInput = {
   title: "Review auth helper",
   language: "TypeScript",
   prompt: "Find bugs in this code.",
   code: "function isAllowed(user?: { role: string }) { return user!.role === 'admin' }",
+  testCode: "assert isAllowed({ role: 'admin' }) === true",
   costLimitUsd: 0.02
 };
 
@@ -30,6 +34,7 @@ describe("runWorkflow events", () => {
     const result = await runWorkflow({
       input: { ...baseInput, workflow },
       provider: createMockProvider(),
+      executor: mockExecutor,
       onEvent
     });
 
@@ -80,6 +85,13 @@ describe("runWorkflow events", () => {
     stepFinishEvents.forEach((event) => {
       expect(event.responsePreview.length).toBeLessThanOrEqual(200);
     });
+
+    const executionEvent = events.find(
+      (event): event is Extract<WorkflowEvent, { type: "execution-result" }> =>
+        event.type === "execution-result"
+    );
+    expect(executionEvent).toBeDefined();
+    expect(executionEvent?.result).toEqual(result.execution);
   });
 
   it("emits escalation event for cheap_first reflecting the escalated outcome", async () => {
@@ -88,6 +100,7 @@ describe("runWorkflow events", () => {
     const result = await runWorkflow({
       input: { ...baseInput, workflow: "cheap_first" },
       provider: createMockProvider({ verifierConfidence: 0.35 }),
+      executor: mockExecutor,
       onEvent
     });
 
@@ -105,6 +118,7 @@ describe("runWorkflow events", () => {
     const result = await runWorkflow({
       input: { ...baseInput, workflow: "cheap_first" },
       provider: createMockProvider({ verifierConfidence: 0.9 }),
+      executor: mockExecutor,
       onEvent
     });
 
@@ -122,6 +136,7 @@ describe("runWorkflow events", () => {
     await runWorkflow({
       input: { ...baseInput, workflow: "single_cheap" },
       provider: createMockProvider(),
+      executor: mockExecutor,
       onEvent
     });
 
@@ -134,6 +149,7 @@ describe("runWorkflow events", () => {
     await runWorkflow({
       input: { ...baseInput, workflow: "planner_worker_verifier" },
       provider: createMockProvider(),
+      executor: mockExecutor,
       onEvent
     });
 
@@ -146,6 +162,7 @@ describe("runWorkflow events", () => {
     await runWorkflow({
       input: { ...baseInput, workflow: "panel_judge" },
       provider: createMockProvider(),
+      executor: mockExecutor,
       onEvent
     });
 
@@ -160,12 +177,14 @@ describe("runWorkflow events", () => {
     const provider = createMockProvider();
     const withoutEvents = await runWorkflow({
       input: { ...baseInput, workflow: "single_cheap" },
-      provider
+      provider,
+      executor: mockExecutor
     });
     const { onEvent } = collectEvents();
     const withEvents = await runWorkflow({
       input: { ...baseInput, workflow: "single_cheap" },
       provider,
+      executor: mockExecutor,
       onEvent
     });
 
@@ -173,9 +192,8 @@ describe("runWorkflow events", () => {
     expect(withEvents.workflow).toBe(withoutEvents.workflow);
     expect(withEvents.costUsd).toBe(withoutEvents.costUsd);
     expect(withEvents.latencyMs).toBe(withoutEvents.latencyMs);
-    expect(withEvents.findings.map((finding) => ({ ...finding, id: undefined }))).toEqual(
-      withoutEvents.findings.map((finding) => ({ ...finding, id: undefined }))
-    );
+    expect(withEvents.candidateCode).toBe(withoutEvents.candidateCode);
+    expect(withEvents.execution).toEqual(withoutEvents.execution);
     expect(withEvents.evaluation).toEqual(withoutEvents.evaluation);
     expect(withEvents.calls.map((call) => ({ ...call, id: undefined }))).toEqual(
       withoutEvents.calls.map((call) => ({ ...call, id: undefined }))
@@ -194,6 +212,7 @@ describe("runWorkflow events", () => {
     const result = await runWorkflow({
       input: { ...baseInput, workflow: "single_cheap" },
       provider: failingProvider,
+      executor: mockExecutor,
       onEvent
     });
 
@@ -201,6 +220,7 @@ describe("runWorkflow events", () => {
     expect(events[0].type).toBe("run-init");
     expect(events.some((event) => event.type === "step-start")).toBe(true);
     expect(events.some((event) => event.type === "step-finish")).toBe(false);
+    expect(events.some((event) => event.type === "execution-result")).toBe(false);
     expect(events.some((event) => event.type === "run-final")).toBe(false);
   });
 });

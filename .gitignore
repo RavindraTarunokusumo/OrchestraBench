@@ -3,7 +3,14 @@ node_modules/
 .env*.local
 .env
 .data/
+.benchmarks/
 coverage/
 dist/
 tsconfig.tsbuildinfo
 .node_modules_broken_*/
+
+# Local tooling runtime artifacts (Grok CLI, GitNexus MCP, skills)
+mcps/
+terminals/
+agent-tools/
+.claude/skills/

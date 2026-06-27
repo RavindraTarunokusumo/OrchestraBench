@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { RunInput, RunStatus } from "@/lib/domain/types";
+import type { ExecutionResult, RunInput, RunStatus } from "@/lib/domain/types";
 import type { WorkflowEvent } from "@/lib/workflows/events";
 import type { WorkflowGraph } from "@/lib/workflows/graph";
 
@@ -31,8 +31,9 @@ export type RunFinalSummary = {
   status: RunStatus;
   costUsd: number;
   latencyMs: number;
-  findingsCount: number;
-  qualityScore: number;
+  resolved: boolean;
+  testsPassed: number;
+  testsTotal: number;
   valueScore: number;
 };
 
@@ -44,6 +45,7 @@ export type RunStreamState = {
   escalation: { escalated: boolean; reason: string } | null;
   finalRunId: string | null;
   finalSummary: RunFinalSummary | null;
+  executionResult: ExecutionResult | null;
   error: string | null;
 };
 
@@ -64,6 +66,7 @@ export const initialRunStreamState: RunStreamState = {
   escalation: null,
   finalRunId: null,
   finalSummary: null,
+  executionResult: null,
   error: null
 };
 
@@ -92,6 +95,7 @@ export function reduceStreamEvent(prev: RunStreamState, event: WorkflowEvent): R
         escalation: null,
         finalRunId: null,
         finalSummary: null,
+        executionResult: null,
         error: null
       };
     }
@@ -129,6 +133,9 @@ export function reduceStreamEvent(prev: RunStreamState, event: WorkflowEvent): R
     case "escalation": {
       return { ...prev, escalation: { escalated: event.escalated, reason: event.reason } };
     }
+    case "execution-result": {
+      return { ...prev, executionResult: event.result };
+    }
     case "run-final": {
       const runFailed = event.status === "failed";
       const resultNodeId = prev.graph?.nodes.find((node) => node.kind === "result")?.id;
@@ -149,8 +156,9 @@ export function reduceStreamEvent(prev: RunStreamState, event: WorkflowEvent): R
           status: event.status,
           costUsd: event.costUsd,
           latencyMs: event.latencyMs,
-          findingsCount: event.findingsCount,
-          qualityScore: event.qualityScore,
+          resolved: event.resolved,
+          testsPassed: event.testsPassed,
+          testsTotal: event.testsTotal,
           valueScore: event.valueScore
         },
         nodeStates,
