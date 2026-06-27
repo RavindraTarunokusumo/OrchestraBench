@@ -45,6 +45,17 @@ Completed sessions must be moved to `docs/iterations/archive/`.
 - Add a shared `formatCostUsd`/score formatter (lib/utils) — cost/quality/value formatting is duplicated across home, dashboard, new-run, and run-detail. (Code-review medium, deferred.)
 - Validate `entryPoint` as a Python identifier (`^[A-Za-z_][A-Za-z0-9_]*$`) in `createRunSchema` — API-supplied `entryPoint` flows into `from ${moduleName} import *` and the `${module}.py` filename in `lib/execution/e2b.ts`; a newline/malformed value can run module-level Python before pytest (sandbox-only) or break the harness. Not a host vuln (E2B is the trust boundary; security review PR #3 ruled it out) but cheap robustness hardening.
 
+### Deferred from PR #3 bundled code review (Phase 2 / low value now)
+
+- (#4) Legacy persisted runs (old `findings`/`qualityScore` shape, no `execution`) crash `app/runs/[id]/page.tsx`. Add a load-time normalizer in `readData` or a "legacy run" fallback panel. Affects only pre-existing local `.data` (gitignored).
+- (#5) Live "Candidate fix" preview in `new-run-client.tsx` derives from the longest node `responsePreview`, not the final answer; multi-step workflows can show an intermediate snippet. Surface `candidateCode` on the `execution-result`/`run-final` SSE event instead.
+- (#8) Mock provider returns review prose, not code, so local dev without `E2B_API_KEY` never exercises real extraction→execution. Make `buildMockText` emit a fenced code block for non-verifier roles.
+- (#9) `parsePytest` in `lib/execution/e2b.ts` is binary (0 or all); `scoreExecution` supports partial credit. Parse pytest's passed/failed summary for partial counts.
+- (#10) `latencyMs` excludes `execution.durationMs`; repair-run latency under-reports end-to-end time. Add execution duration or expose a separate `executionMs` across API/events/UI.
+- (#13) `createRunSchema` lacks a repair-mode `.refine()` ("either `testCode` or resolvable `benchmarkTaskId`"); invalid inputs fail later with a generic error.
+- (#14) `planner_worker_verifier` intermediate prompts (planner/worker/verifier) still ask for prose reviews; only the finalizer uses the repair prompt. Align intermediate prompts to code-fix reasoning (nit; works today).
+- (ingest commit pin, dup of existing item) `scripts/ingest-benchmark.ts` skips clone when `.benchmarks/quixbugs` exists; a stale clone may not match `QUIXBUGS_COMMIT`. Verify HEAD against the pin or reclone.
+
 - Add evaluation harness (Braintrust/LangSmith/etc.)
 - Export results
 - Human feedback UI
