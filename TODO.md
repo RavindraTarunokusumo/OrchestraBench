@@ -43,6 +43,7 @@ Completed sessions must be moved to `docs/iterations/archive/`.
 - `OrchestrationCanvas` GSAP effect depends on the whole `nodeStates` object, so the `gsap.context` is reverted/rebuilt (incl. `querySelectorAll` + `getTotalLength` forced reflow) on every stream event, restarting active-node pulses. Narrow to a per-node tween model keyed on status/flowing signature so unrelated nodes don't re-pulse. (Code-review medium, deferred.)
 - Centralize SSE wire framing: the `data: …\n\n` encoder in `app/api/runs/stream/route.ts` and the `parseSseChunk` decoder in `use-run-stream.ts` are independent literals. Extract a shared `encode/decode` module. (Code-review medium, deferred.)
 - Add a shared `formatCostUsd`/score formatter (lib/utils) — cost/quality/value formatting is duplicated across home, dashboard, new-run, and run-detail. (Code-review medium, deferred.)
+- Validate `entryPoint` as a Python identifier (`^[A-Za-z_][A-Za-z0-9_]*$`) in `createRunSchema` — API-supplied `entryPoint` flows into `from ${moduleName} import *` and the `${module}.py` filename in `lib/execution/e2b.ts`; a newline/malformed value can run module-level Python before pytest (sandbox-only) or break the harness. Not a host vuln (E2B is the trust boundary; security review PR #3 ruled it out) but cheap robustness hardening.
 
 - Add evaluation harness (Braintrust/LangSmith/etc.)
 - Export results
