@@ -14,7 +14,7 @@ Completed sessions are archived under `docs/iterations/archive/`:
 - [ ] Repair mode — Phase 2: fully repurpose the dashboard/datasets to repair metrics (resolve-rate vs cost comparison across workflows), replacing the Phase-1 guards/placeholders.
   - Spec: `docs/superpowers/specs/2026-06-27-repair-mode-phase2-dashboard-datasets.md`; Plan: `docs/superpowers/plans/2026-06-27-repair-mode-phase2-dashboard-datasets.md`. Presentation/aggregation only — no domain/store/runner/evaluation/API changes.
   - [x] T1: `lib/dashboard/aggregate.ts` — `summarizeByWorkflow` / `chartableSummaries` / `WorkflowSummary` + unit tests (gating; shared contract). Tests live in `tests/dashboard-aggregate.test.ts` (project convention; `vitest.config` only discovers `tests/**`).
-  - [ ] T3: rewrite `components/dashboard/workflow-charts.tsx` to repair metrics — `ResolveRateVsCost` scatter + `ValueLeaderboard`; drop the review-era `quality` series/`WorkflowChartRow`.
+  - [x] T3: rewrite `components/dashboard/workflow-charts.tsx` to repair metrics — `ResolveRateVsCost` scatter + `ValueLeaderboard`; drop the review-era `quality` series/`WorkflowChartRow`.
   - [ ] T2: wire `app/dashboard/page.tsx` to the aggregator (table parity) and replace the "full view in Phase 2" placeholder card with `<WorkflowCharts>`.
   - [ ] T4: `app/datasets/[id]/page.tsx` — per-task cross-workflow comparison from `summarizeByWorkflow(relatedRuns)`.
   - [ ] T5: `app/datasets/page.tsx` — repair-first list columns.
