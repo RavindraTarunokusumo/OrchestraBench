@@ -12,4 +12,5 @@ tsconfig.tsbuildinfo
 # Local tooling runtime artifacts (Grok CLI, GitNexus MCP, skills)
 mcps/
 terminals/
+agent-tools/
 .claude/skills/
