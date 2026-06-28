@@ -99,3 +99,23 @@ Grok bundled review (PENDING posted, session cleaned up). 1 bug + 2 suggestions,
 ### Note
 
 The dedicated `agitated-volhard-b5e234` worktree was deleted by OneDrive mid-cycle-4 (after the F4/F3 commits, before push). The branch + commits + git notes survived in the shared git dir; the run resumed in the primary checkout. Remaining cycles run on feature branches in the primary checkout (sequential), avoiding new OneDrive worktrees.
+
+## Cycle 5 — Candidate-fix surfacing & repair prompts (D5, D14)
+
+- Merged: PR #12 → `main` as merge commit `436de93` (2026-06-28)
+- Type: enhancement (Grok-implemented, orchestrator-validated)
+
+### Tasks (commit-tagged)
+
+- [x] D5 — surface the real candidate fix. (cad0385)
+  - `candidateCode` added to the `run-final` event (from `saved.candidateCode`), threaded through `use-run-stream`; the new-run "Candidate fix" panel renders `finalSummary.candidateCode`, dropping the truncated longest-`responsePreview` heuristic and its `extractCode`/`useMemo`.
+- [x] D14 — repair-oriented planner_worker_verifier prompts. (7a1cfc3, c6d736c)
+  - Reworded planner/worker/verifier from prose code-review to code-fix reasoning. Review follow-up (Rule 2 scope extension): the finalizer previously called `buildRepairPrompt(input)` alone — the worker/verifier output never reached the answer. The finalizer now incorporates the worker fix + verifier critique (buildRepairPrompt kept last so the `Buggy code:` section stays terminal); the verifier critiques against the original code/tests; the worker returns a code block. Test asserts the finalizer consumes the worker output.
+
+### Review
+
+Grok bundled review (PENDING posted, session cleaned up). Found the finalizer-chain disconnect (fixed in `c6d736c`); the "no live candidate preview" note was declined (the panel only renders at terminal).
+
+### Validation
+
+`npm run typecheck` clean, `npm run lint` clean, `npm test` 106 passed / 1 skipped.
