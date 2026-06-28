@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { chartableSummaries, summarizeByWorkflow } from "@/lib/dashboard/aggregate";
 import { listRuns } from "@/lib/store/file-store";
+import { formatCostUsd, formatScore } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const runs = await listRuns();
@@ -59,7 +60,7 @@ export default async function DashboardPage() {
             <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Avg value score</CardDescription>
-                <CardTitle className="text-3xl">{overallAvgValue.toFixed(1)}</CardTitle>
+                <CardTitle className="text-3xl">{formatScore(overallAvgValue)}</CardTitle>
               </CardHeader>
             </Card>
           </div>
@@ -107,8 +108,8 @@ export default async function DashboardPage() {
                       <TableCell>
                         {row.count === 0 ? "—" : `${(row.resolveRate * 100).toFixed(0)}% (${row.resolvedCount}/${row.count})`}
                       </TableCell>
-                      <TableCell>{row.count === 0 ? "—" : row.avgValue.toFixed(1)}</TableCell>
-                      <TableCell>{row.count === 0 ? "—" : `$${row.avgCost.toFixed(4)}`}</TableCell>
+                      <TableCell>{row.count === 0 ? "—" : formatScore(row.avgValue)}</TableCell>
+                      <TableCell>{row.count === 0 ? "—" : formatCostUsd(row.avgCost)}</TableCell>
                       <TableCell>{row.count === 0 ? "—" : `${Math.round(row.avgLatencyMs)} ms`}</TableCell>
                     </TableRow>
                   ))}
@@ -132,7 +133,7 @@ export default async function DashboardPage() {
                     </CardHeader>
                     <CardContent className="text-muted-foreground text-sm">
                       {run.evaluation?.resolved ? "Resolved" : "Unresolved"} · {run.evaluation?.testsPassed ?? 0}/
-                      {run.evaluation?.testsTotal ?? 0} tests · Value {(run.evaluation?.valueScore ?? 0).toFixed(1)}
+                      {run.evaluation?.testsTotal ?? 0} tests · Value {formatScore(run.evaluation?.valueScore ?? 0)}
                     </CardContent>
                   </Card>
                 </Link>

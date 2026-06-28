@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { getRun } from "@/lib/store/file-store";
+import { formatCostUsd, formatScore } from "@/lib/utils";
 import { buildWorkflowGraph } from "@/lib/workflows/graph";
 import { workflowLabel } from "@/lib/workflows/labels";
 
@@ -43,8 +44,8 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
           value={run.execution.resolved ? "Yes" : "No"}
         />
         <Metric label="Tests" value={`${run.execution.testsPassed}/${run.execution.testsTotal}`} />
-        <Metric label="Value" value={run.evaluation.valueScore.toFixed(1)} />
-        <Metric label="Cost" value={`$${run.costUsd.toFixed(4)}`} />
+        <Metric label="Value" value={formatScore(run.evaluation.valueScore)} />
+        <Metric label="Cost" value={formatCostUsd(run.costUsd)} />
       </div>
 
       <Card>
@@ -162,7 +163,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
               <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                 <span className="font-medium">{call.role}</span>
                 <span className="text-muted-foreground">{call.model}</span>
-                <span className="text-muted-foreground">${call.estimatedCostUsd.toFixed(4)}</span>
+                <span className="text-muted-foreground">{formatCostUsd(call.estimatedCostUsd)}</span>
                 <span className="text-muted-foreground">{call.latencyMs} ms</span>
               </div>
               <pre className="bg-muted overflow-auto rounded-md p-3 text-xs whitespace-pre-wrap">{call.response}</pre>

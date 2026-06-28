@@ -10,7 +10,7 @@ import {
   ScrollText,
   type LucideIcon
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCostUsd } from "@/lib/utils";
 import type { NodeRunStatus, NodeState } from "@/components/orchestration/use-run-stream";
 import type { GraphNode, GraphNodeKind } from "@/lib/workflows/graph";
 
@@ -49,7 +49,7 @@ export function formatTokens(usage: NodeState["usage"]): string | null {
 
 export function formatCost(costUsd: number | undefined): string | null {
   if (costUsd === undefined) return null;
-  return `$${costUsd.toFixed(4)}`;
+  return formatCostUsd(costUsd);
 }
 
 export function formatLatency(latencyMs: number | undefined): string | null {
