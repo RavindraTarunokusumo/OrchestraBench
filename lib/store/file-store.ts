@@ -22,7 +22,9 @@ export type DatasetRerunResult = {
   failures: Array<{ workflow: WorkflowKind; error: string }>;
 };
 
-const DATA_DIR = path.join(process.cwd(), ".data");
+const DATA_DIR = process.env.ORCHESTRABENCH_DATA_DIR
+  ? path.resolve(process.env.ORCHESTRABENCH_DATA_DIR)
+  : path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "orchestrabench.json");
 let mutationQueue: Promise<unknown> = Promise.resolve();
 
@@ -266,7 +268,26 @@ async function writeData(data: AppData): Promise<void> {
   await mkdir(DATA_DIR, { recursive: true });
   const tempFile = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
   await writeFile(tempFile, JSON.stringify(data, null, 2), "utf8");
-  await rename(tempFile, DATA_FILE);
+  await renameWithRetry(tempFile, DATA_FILE);
+}
+
+const RETRYABLE_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY", "EEXIST"]);
+
+async function renameWithRetry(from: string, to: string, attempts = 5): Promise<void> {
+  let lastError: NodeJS.ErrnoException | undefined;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      await rename(from, to);
+      return;
+    } catch (error) {
+      if (!isNodeError(error) || !RETRYABLE_RENAME_CODES.has(error.code ?? "")) {
+        throw error;
+      }
+      lastError = error;
+      await new Promise((r) => setTimeout(r, 15 * (attempt + 1)));
+    }
+  }
+  throw lastError;
 }
 
 async function mutateData<T>(mutate: (data: AppData) => T): Promise<T> {
