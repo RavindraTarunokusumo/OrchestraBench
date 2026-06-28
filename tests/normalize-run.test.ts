@@ -102,6 +102,23 @@ describe("normalizeRun", () => {
     ]);
   });
 
+  it("fills missing nested fields on a partial execution object", () => {
+    const partial = {
+      ...buildModernRun(),
+      execution: { resolved: true, testsPassed: 2, testsTotal: 3 }
+    } as unknown as RunResult;
+
+    const normalized = normalizeRun(partial);
+
+    expect(normalized.execution.stdout).toBe("");
+    expect(normalized.execution.stderr).toBe("");
+    expect(normalized.execution.durationMs).toBe(0);
+    expect(normalized.execution.backend).toBe("mock");
+    expect(normalized.execution.exitCode).toBeNull();
+    expect(normalized.execution.testsPassed).toBe(2);
+    expect(normalized.execution.testsTotal).toBe(3);
+  });
+
   it("passes a complete modern run through unchanged", () => {
     const modern = buildModernRun();
     expect(normalizeRun(modern)).toEqual(modern);

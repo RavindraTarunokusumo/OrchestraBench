@@ -46,13 +46,17 @@ const DEFAULT_EVALUATION: Evaluation = {
 };
 
 export function normalizeRun(run: RunResult): RunResult {
-  const execution = run.execution ?? DEFAULT_EXECUTION;
-  const evaluation = run.evaluation ?? {
-    ...DEFAULT_EVALUATION,
-    resolved: execution.resolved,
-    testsPassed: execution.testsPassed,
-    testsTotal: execution.testsTotal
-  };
+  // Spread defaults first so a wholly-missing or partially-missing nested
+  // object (legacy runs) still has every field the UI reads.
+  const execution: ExecutionResult = { ...DEFAULT_EXECUTION, ...run.execution };
+  const evaluation: Evaluation = run.evaluation
+    ? { ...DEFAULT_EVALUATION, ...run.evaluation }
+    : {
+        resolved: execution.resolved,
+        testsPassed: execution.testsPassed,
+        testsTotal: execution.testsTotal,
+        valueScore: 0
+      };
 
   return {
     ...run,
