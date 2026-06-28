@@ -81,6 +81,23 @@ export function OrchestrationCanvas({
     }));
   }, [graph, nodeStates]);
 
+  // The GSAP context only needs rebuilding when the set of active node rings or
+  // flowing edges changes — not on every stream event (preview/cost/total
+  // updates leave it untouched), so unrelated active-node pulses keep running.
+  const animationSignature = useMemo(() => {
+    const activeNodes = Object.entries(nodeStates)
+      .filter(([, state]) => state.status === "active")
+      .map(([id]) => id)
+      .sort()
+      .join(",");
+    const flowingEdges = edgeStates
+      .filter((entry) => entry.flowing)
+      .map((entry) => `${entry.edge.from}->${entry.edge.to}`)
+      .sort()
+      .join(",");
+    return `${activeNodes}|${flowingEdges}`;
+  }, [nodeStates, edgeStates]);
+
   useLayoutEffect(() => {
     if (!rootRef.current || !graph) return;
 
@@ -135,7 +152,7 @@ export function OrchestrationCanvas({
     }, rootRef);
 
     return () => ctx.revert();
-  }, [graph, nodeStates, mode]);
+  }, [graph, animationSignature, mode]);
 
   if (!graph) {
     return (
