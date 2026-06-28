@@ -33,6 +33,7 @@ export type WorkflowEvent =
       testsPassed: number;
       testsTotal: number;
       valueScore: number;
+      candidateCode: string;
     }
   | { type: "run-error"; message: string };
 

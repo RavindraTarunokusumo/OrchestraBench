@@ -49,7 +49,8 @@ export async function POST(request: Request) {
           resolved: saved.execution.resolved,
           testsPassed: saved.execution.testsPassed,
           testsTotal: saved.execution.testsTotal,
-          valueScore: saved.evaluation.valueScore
+          valueScore: saved.evaluation.valueScore,
+          candidateCode: saved.candidateCode
         });
       } catch (error) {
         // runWorkflow catches in-workflow failures internally and resolves a

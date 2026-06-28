@@ -89,7 +89,8 @@ describe("SSE serialization (route-equivalent)", () => {
       resolved: saved.execution.resolved,
       testsPassed: saved.execution.testsPassed,
       testsTotal: saved.execution.testsTotal,
-      valueScore: saved.evaluation.valueScore
+      valueScore: saved.evaluation.valueScore,
+      candidateCode: saved.candidateCode
     });
 
     expect(lines.length).toBeGreaterThan(0);
@@ -113,6 +114,7 @@ describe("SSE serialization (route-equivalent)", () => {
       expect(finalEvent.testsPassed).toBe(saved.execution.testsPassed);
       expect(finalEvent.testsTotal).toBe(saved.execution.testsTotal);
       expect(finalEvent.valueScore).toBe(saved.evaluation.valueScore);
+      expect(finalEvent.candidateCode).toBe(saved.candidateCode);
     }
 
     const fetched = await getRun(saved.id);

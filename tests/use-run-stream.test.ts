@@ -192,7 +192,8 @@ describe("reduceStreamEvent", () => {
       resolved: true,
       testsPassed: 2,
       testsTotal: 2,
-      valueScore: 0.7
+      valueScore: 0.7,
+      candidateCode: "def gcd(a, b):\n    return a if b == 0 else gcd(b, a % b)"
     });
 
     expect(next.status).toBe("complete");
@@ -209,7 +210,8 @@ describe("reduceStreamEvent", () => {
       resolved: true,
       testsPassed: 2,
       testsTotal: 2,
-      valueScore: 0.7
+      valueScore: 0.7,
+      candidateCode: "def gcd(a, b):\n    return a if b == 0 else gcd(b, a % b)"
     });
   });
 
@@ -226,7 +228,8 @@ describe("reduceStreamEvent", () => {
       resolved: false,
       testsPassed: 0,
       testsTotal: 1,
-      valueScore: 0
+      valueScore: 0,
+      candidateCode: ""
     });
 
     expect(next.status).toBe("failed");
