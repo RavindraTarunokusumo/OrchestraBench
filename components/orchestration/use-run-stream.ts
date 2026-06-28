@@ -37,6 +37,7 @@ export type RunFinalSummary = {
   testsPassed: number;
   testsTotal: number;
   valueScore: number;
+  candidateCode: string;
 };
 
 export type RunStreamState = {
@@ -162,7 +163,8 @@ export function reduceStreamEvent(prev: RunStreamState, event: WorkflowEvent): R
           resolved: event.resolved,
           testsPassed: event.testsPassed,
           testsTotal: event.testsTotal,
-          valueScore: event.valueScore
+          valueScore: event.valueScore,
+          candidateCode: event.candidateCode
         },
         nodeStates,
         totals: {

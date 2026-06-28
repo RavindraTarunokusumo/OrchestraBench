@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRunStream } from "@/components/orchestration/use-run-stream";
 import { OrchestrationCanvas } from "@/components/orchestration/canvas";
@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
-import { extractCode } from "@/lib/workflows/extract-code";
 import { workflowLabels } from "@/lib/workflows/labels";
 import { formatCostUsd, formatScore } from "@/lib/utils";
 
@@ -41,15 +40,6 @@ export function NewRunClient() {
 
   const isRunning = status === "running";
   const isTerminal = status === "complete" || status === "failed";
-
-  const candidateCode = useMemo(() => {
-    const previews = Object.values(nodeStates)
-      .map((node) => node.responsePreview ?? "")
-      .filter((preview) => preview.length > 0);
-    if (previews.length === 0) return "";
-    const longest = previews.reduce((best, preview) => (preview.length > best.length ? preview : best));
-    return extractCode(longest);
-  }, [nodeStates]);
 
   function handleSubmit(formEvent: React.FormEvent) {
     formEvent.preventDefault();
@@ -157,7 +147,7 @@ export function NewRunClient() {
                   <div>
                     <h3 className="mb-2 text-sm font-medium">Candidate fix</h3>
                     <pre className="bg-muted overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
-                      {candidateCode || "(no code extracted yet)"}
+                      {finalSummary.candidateCode || "(no code extracted yet)"}
                     </pre>
                   </div>
                 </div>

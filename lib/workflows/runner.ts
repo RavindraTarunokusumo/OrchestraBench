@@ -145,22 +145,22 @@ export async function runWorkflow({
       const planner = await executeCall(state, provider, "planner", {
         role: "planner",
         model: CHEAP_MODEL,
-        prompt: `Plan a code review for this task:\n${input.prompt}\n\n${input.code}`
+        prompt: `Plan how to fix the bug in this code so its tests pass:\n${input.prompt}\n\n${input.code}`
       });
       const worker = await executeCall(state, provider, "worker", {
         role: "worker",
         model: CHEAP_MODEL,
-        prompt: `Use this plan to inspect the code:\n${planner.response}\n\n${input.code}`
+        prompt: `Apply this plan to produce a corrected version of the code. Return only the corrected code in a single code block:\n${planner.response}\n\n${input.code}`
       });
       const verifier = await executeCall(state, provider, "verifier", {
         role: "verifier",
         model: CHEAP_MODEL,
-        prompt: `Attack this answer for missed bugs and weak claims:\n${worker.response}`
+        prompt: `Critique this proposed fix against the original code and tests for correctness and any remaining bugs:\nProposed fix:\n${worker.response}\n\nOriginal code:\n${input.code}\n\nTests:\n${input.testCode ?? ""}`
       });
       const finalizer = await executeCall(state, provider, "finalizer", {
         role: "finalizer",
         model: CHEAP_MODEL,
-        prompt: buildRepairPrompt(input, "finalizer")
+        prompt: `A worker proposed this fix:\n${worker.response}\n\nA verifier raised these concerns:\n${verifier.response}\n\n${buildRepairPrompt(input, "finalizer")}`
       });
       finalAnswer = finalizer.response;
     }
