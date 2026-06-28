@@ -10,17 +10,22 @@ describe("parsePytest", () => {
     expect(parsePytest("1 failed, 2 passed in 0.02s", 3)).toEqual({ passed: 2, total: 3, resolved: false });
   });
 
-  it("parses an error summary", () => {
-    expect(parsePytest("1 error in 0.01s", 1)).toEqual({ passed: 0, total: 1, resolved: false });
+  it("reports total as assertCount on a collection error", () => {
+    expect(parsePytest("1 error in 0.01s", 6)).toEqual({ passed: 0, total: 6, resolved: false });
   });
 
-  it("falls back when no summary counts are present", () => {
+  it("falls back to assertCount when no summary counts are present", () => {
     expect(parsePytest("", 4)).toEqual({ passed: 0, total: 4, resolved: false });
-    expect(parsePytest("no pytest output here", 0)).toEqual({ passed: 0, total: 1, resolved: false });
+    expect(parsePytest("no pytest output here", 0)).toEqual({ passed: 0, total: 0, resolved: false });
   });
 
-  it("parses a zero-passed summary", () => {
-    expect(parsePytest("0 passed in 0.01s", 2)).toEqual({ passed: 0, total: 0, resolved: false });
+  it("floors the denominator to assertCount on a zero-passed summary", () => {
+    expect(parsePytest("0 passed in 0.01s", 2)).toEqual({ passed: 0, total: 2, resolved: false });
+  });
+
+  it("reads the last summary line, ignoring earlier text", () => {
+    const stdout = "collected 2 items\nfailure note mentions 9 passed earlier\n2 passed in 0.03s";
+    expect(parsePytest(stdout, 2)).toEqual({ passed: 2, total: 2, resolved: true });
   });
 });
 
@@ -46,5 +51,12 @@ describe("buildPytestFile", () => {
     expect(mathIndex).toBeGreaterThan(importIndex);
     expect(testIndex).toBeGreaterThan(mathIndex);
     expect(file).not.toMatch(/def test_case_0\(\):\n\s+import math/);
+  });
+
+  it("keeps an indented multi-line assert inside one test function", () => {
+    const file = buildPytestFile("solution", "assert foo(\n  1, 2\n) == 3\nassert bar() == 4");
+
+    expect(file).toContain("def test_case_0():\n    assert foo(\n      1, 2\n    ) == 3");
+    expect(file).toContain("def test_case_1():\n    assert bar() == 4");
   });
 });
