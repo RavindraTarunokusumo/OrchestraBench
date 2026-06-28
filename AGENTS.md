@@ -37,6 +37,15 @@ Rules:
 6. (Post-PR) Update documentation files once the PR has been merged and archive completed TODO items from `TODO.md` into `docs/iterations/archive/`; ensure each subitem in the TODO are tagged with the commit hash and each session are tagged with the merge ID - `TODO.md` should only contain **active or future** work only. These Post-PR doc/archive commits are pushed **directly to `main`** (no PR — the feature PR is already merged); fast-forward only, never force.
 7. (Reflection) Conclude the session by doing the [Reflection](#reflection) exercise; the Reflection commit is likewise pushed **directly to `main`** (no PR). After receiving confirmation from the user, delete the worktree and branch.
 
+### Autopilot Mode
+
+When the user invokes Autopilot for a feature or set of features, Autopilot executes the full [Workflow](#workflow) (Steps 1–7) **autonomously — without requesting permission or input from the user** at any gate that would normally pause for them (spec acceptance, PR submission, worktree teardown). The user's Autopilot brief is the standing authorization for the whole run; resolve ambiguity by choosing the most reasonable interpretation, recording that decision in the spec/`TODO.md`, and proceeding rather than asking.
+
+- **One feature, one session, one cycle.** Each feature (or a cohesive feature set the user groups under a single brief) is implemented in its own dedicated session running a complete, independent Workflow cycle — its own worktree/branch, spec + lightweight plan, `TODO.md` entries, implementation, PR, post-PR doc/archive, and reflection. When the brief defines multiple features, run them as **separate sequential cycles**: fully complete one (through reflection and worktree teardown) before starting the next, so each preserves its own spec→plan→implementation→review→reflection chain.
+- **Self-acceptance of gates.** Step 3's spec is self-reviewed and accepted by the agent (no user sign-off); Step 7's worktree/branch deletion proceeds automatically once the Reflection commit lands (no user confirmation). Every other Workflow step and rule applies unchanged — specific staging, full-suite validation before each commit, Grok implementation/review handoffs with session cleanup, git notes, and direct-to-`main` post-PR/reflection commits.
+- **Verification rails are non-negotiable.** Autopilot removes *approval prompts*, not *verification*: it still validates with the full suite + typecheck + lint before committing ([Workflow Rule 10](#workflow-rules)), never force-pushes/hard-resets/amends ([Workflow Rule 4](#workflow-rules)), and still delegates the PR review and rigorously addresses findings before completing the cycle.
+- **Reporting, not blocking.** Announce progress between milestones (feature started, PR opened, merged, reflected, next cycle starting) so the user can follow along, but never block waiting on a response.
+
 ### Workflow Rules
 
 1. Every TODO sub-item should land as its own commit.
