@@ -28,7 +28,7 @@ The runner is synchronous. The live New Run page streams workflow events over SS
 - `/datasets` lists benchmark tasks by source + language with per-task run/resolved counts, and creates manual tasks.
 - `/datasets/[id]` shows a task's buggy code + test (reference fix behind a reveal toggle), reruns workflows when the task has test code, and shows a per-task cross-workflow comparison of its runs.
 - `/workflows` static guide page: a card per workflow with a cost/quality tag, repair-framed description, the workflow graph (OrchestrationCanvas in static mode), and a text "Flow:" role sequence.
-- `/api/runs/stream` SSE run endpoint. `/api/export` returns the file-store payload as JSON.
+- `/api/runs/stream` SSE run endpoint. `/api/export` returns the file-store payload as JSON; `/api/export/csv` returns runs as a downloadable CSV (`lib/export/runs-csv.ts`).
 
 ## Core Modules
 

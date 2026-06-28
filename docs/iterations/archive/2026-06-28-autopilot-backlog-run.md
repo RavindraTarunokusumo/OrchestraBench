@@ -177,3 +177,21 @@ Grok bundled review (PENDING posted, session cleaned up). 0 bugs; 3 a11y suggest
 ### Validation
 
 `npm run typecheck` clean, `npm run lint` clean, `npm test` 108 passed / 1 skipped, `npm run build` OK (`/workflows` prerendered as static).
+
+## Cycle 9 — Runs CSV export (L2)
+
+- Merged: PR #16 → `main` as merge commit `436c2fe` (2026-06-28)
+- Type: feature (Grok-implemented, orchestrator-validated)
+
+### Tasks (commit-tagged)
+
+- [x] L2 — CSV export. (commit on the merged branch + review test)
+  - JSON export (`/api/export` with a download header + "Export JSON" nav link) was already complete. Added a pure `runsToCsv(runs)` (RFC-4180 escaping) flattening each run to a row (id, title, workflow, status, language, resolved, tests, valueScore, cost, latency, executionMs, timestamps, benchmarkTaskId), a `/api/export/csv` route streaming it as a downloadable file, and an "Export CSV" nav link.
+
+### Review
+
+Grok bundled review (PENDING posted, session cleaned up). 0 bugs; 3 suggestions + 2 nits. Addressed: a newline/CR escaping test. Declined with reasoning: `\n` row separators (broadly compatible), float formatting (exports preserve full precision), nullish guards on required fields (typed non-null; optional `benchmarkTaskId` already guarded), and route error handling (matches the existing JSON export).
+
+### Validation
+
+`npm run typecheck` clean, `npm run lint` clean, `npm test` 113 passed / 1 skipped, `npm run build` OK (`/api/export/csv` route present).
