@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { getRun } from "@/lib/store/file-store";
 import { formatCostUsd, formatScore } from "@/lib/utils";
+import { checkBudget } from "@/lib/workflows/budgets";
 import { buildWorkflowGraph } from "@/lib/workflows/graph";
 import { workflowLabel } from "@/lib/workflows/labels";
 
@@ -23,6 +24,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
 
   const graph = buildWorkflowGraph(run.workflow);
   const nodeStates = deriveNodeStatesFromCalls(graph, run);
+  const budget = checkBudget(run.workflow, run.costUsd, run.latencyMs);
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 py-8">
@@ -46,6 +48,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         <Metric label="Tests" value={`${run.execution.testsPassed}/${run.execution.testsTotal}`} />
         <Metric label="Value" value={formatScore(run.evaluation.valueScore)} />
         <Metric label="Cost" value={formatCostUsd(run.costUsd)} />
+        <Metric label="Budget" value={budget.withinBudget ? "Within" : "Over"} />
       </div>
 
       <Card>
