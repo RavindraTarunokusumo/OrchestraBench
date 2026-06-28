@@ -2,6 +2,8 @@ import { OrchestrationCanvas } from "@/components/orchestration/canvas";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
+import { formatCostUsd } from "@/lib/utils";
+import { workflowBudgets } from "@/lib/workflows/budgets";
 import { buildWorkflowGraph } from "@/lib/workflows/graph";
 import { workflowLabels } from "@/lib/workflows/labels";
 
@@ -52,6 +54,10 @@ export default function WorkflowsPage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
                 <OrchestrationCanvas graph={graph} nodeStates={{}} mode="static" />
+                <p className="text-xs text-muted-foreground">
+                  Budget: ≤ {formatCostUsd(workflowBudgets[kind].costUsd)} · ≤{" "}
+                  {Math.round(workflowBudgets[kind].latencyMs / 1000)}s
+                </p>
                 <p className="text-xs text-muted-foreground">Flow: {flow}</p>
               </CardContent>
             </Card>
