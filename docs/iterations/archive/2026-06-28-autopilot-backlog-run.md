@@ -119,3 +119,21 @@ Grok bundled review (PENDING posted, session cleaned up). Found the finalizer-ch
 ### Validation
 
 `npm run typecheck` clean, `npm run lint` clean, `npm test` 106 passed / 1 skipped.
+
+## Cycle 6 — File-store atomic-write hardening (F1)
+
+- Merged: PR #13 → `main` as merge commit `4ec6237` (2026-06-28)
+- Type: robustness / test-infra (Grok-implemented, orchestrator-validated)
+
+### Tasks (commit-tagged)
+
+- [x] F1 — atomic-write hardening + parallel-safe test dirs. (8201cbc + review fix in the same PR)
+  - `DATA_DIR` honors `ORCHESTRABENCH_DATA_DIR` (resolved) else `.data`; `writeData` renames via `renameWithRetry` (retries EPERM/EACCES/EBUSY/EEXIST with short backoff, unlinks the temp file on terminal failure). A vitest setup file gives each worker its own `os.tmpdir()` data dir (off the OneDrive tree), so `fileParallelism` is re-enabled and isolated. Suite ~7s → ~2.3s, stable across repeated runs.
+
+### Review
+
+Grok bundled review (PENDING posted, session cleaned up). 1 bug + 3 suggestions + 1 nit. Addressed: temp-file cleanup on rename failure; a comment clarifying `renameWithRetry` prevents the contention *crash* but not cross-process lost updates (in-process `mutationQueue` only); a test asserting the `ORCHESTRABENCH_DATA_DIR` override is honored. Declined: a spawned cross-process race test (slow/flaky — the parallel suite is the proof) and per-worker tmp-dir teardown (OS-managed, negligible).
+
+### Validation
+
+`npm run typecheck` clean, `npm run lint` clean, `npm test` 108 passed / 1 skipped under parallelism.
