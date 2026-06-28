@@ -4,6 +4,7 @@ import { createConfiguredProvider } from "@/lib/providers/provider";
 import { resolveRunInput, saveRun } from "@/lib/store/file-store";
 import { runWorkflow } from "@/lib/workflows/runner";
 import type { WorkflowEvent } from "@/lib/workflows/events";
+import { encodeSseEvent } from "@/lib/workflows/sse";
 
 export const runtime = "nodejs";
 
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     async start(controller) {
       const send = (event: WorkflowEvent) => {
         try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+          controller.enqueue(encoder.encode(encodeSseEvent(event)));
         } catch {
           // Client disconnected; the controller is closed. Stop emitting — the
           // workflow still runs to completion and persists server-side.

@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
 import { extractCode } from "@/lib/workflows/extract-code";
 import { workflowLabels } from "@/lib/workflows/labels";
+import { formatCostUsd, formatScore } from "@/lib/utils";
 
 const DEFAULTS = {
   title: "gcd repair",
@@ -138,12 +139,12 @@ export function NewRunClient() {
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   <SummaryStat label="Status" value={finalSummary.status} />
                   <SummaryStat label="Tests" value={`${testsPassed}/${testsTotal}`} />
-                  <SummaryStat label="Cost" value={`$${finalSummary.costUsd.toFixed(4)}`} />
+                  <SummaryStat label="Cost" value={formatCostUsd(finalSummary.costUsd)} />
                   <SummaryStat
                     label="Timing"
                     value={`${finalSummary.latencyMs.toLocaleString()}ms model · ${finalSummary.executionMs.toLocaleString()}ms exec`}
                   />
-                  <SummaryStat label="Value score" value={finalSummary.valueScore.toFixed(2)} />
+                  <SummaryStat label="Value score" value={formatScore(finalSummary.valueScore)} />
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-2">

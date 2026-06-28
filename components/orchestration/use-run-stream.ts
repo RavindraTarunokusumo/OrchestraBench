@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ExecutionResult, RunInput, RunStatus } from "@/lib/domain/types";
 import type { WorkflowEvent } from "@/lib/workflows/events";
 import type { WorkflowGraph } from "@/lib/workflows/graph";
+import { parseSseChunk } from "@/lib/workflows/sse";
 
 export type NodeRunStatus = "pending" | "active" | "done" | "failed";
 
@@ -192,27 +193,6 @@ export function markStalledActiveNodesFailed(state: RunStreamState): RunStreamSt
     nodeStates[nodeId] = nodeState.status === "active" ? { ...nodeState, status: "failed" } : nodeState;
   }
   return { ...state, status: state.status === "running" ? "failed" : state.status, nodeStates };
-}
-
-export type ParseSseChunkResult = { events: WorkflowEvent[]; rest: string };
-
-/**
- * Splits a buffered SSE chunk on the "\n\n" event delimiter, strips the leading
- * "data: " prefix from each complete event, and JSON.parses it. Any trailing
- * partial event (no terminating "\n\n" yet) is returned as `rest` for the caller
- * to prepend to the next chunk.
- */
-export function parseSseChunk(buffer: string): ParseSseChunkResult {
-  const parts = buffer.split("\n\n");
-  const rest = parts.pop() ?? "";
-  const events: WorkflowEvent[] = [];
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (trimmed.length === 0) continue;
-    const withoutPrefix = trimmed.startsWith("data: ") ? trimmed.slice("data: ".length) : trimmed;
-    events.push(JSON.parse(withoutPrefix) as WorkflowEvent);
-  }
-  return { events, rest };
 }
 
 const MIN_ACTIVE_DURATION_MS = 500;

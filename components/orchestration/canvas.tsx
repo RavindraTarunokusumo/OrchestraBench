@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { OrchestrationNode } from "@/components/orchestration/node";
 import type { NodeState, RunStreamStatus, RunStreamTotals } from "@/components/orchestration/use-run-stream";
 import type { GraphEdge, GraphNode, WorkflowGraph } from "@/lib/workflows/graph";
+import { formatCostUsd } from "@/lib/utils";
 
 export type OrchestrationCanvasProps = {
   graph: WorkflowGraph | null;
@@ -209,7 +210,7 @@ function OrchestrationHud({
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <div className="flex flex-wrap items-center gap-4">
           <span className="font-medium">{statusLabel(status)}</span>
-          <span className="text-muted-foreground">Cost ${(totals?.costUsd ?? 0).toFixed(4)}</span>
+          <span className="text-muted-foreground">Cost {formatCostUsd(totals?.costUsd ?? 0)}</span>
           <span className="text-muted-foreground">Latency {(totals?.latencyMs ?? 0).toLocaleString()}ms</span>
           <span className="text-muted-foreground">
             Tokens {((totals?.inputTokens ?? 0) + (totals?.outputTokens ?? 0)).toLocaleString()}

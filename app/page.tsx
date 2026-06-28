@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
 import { listRuns } from "@/lib/store/file-store";
+import { formatCostUsd, formatScore } from "@/lib/utils";
 
 const workflowCopy: Record<WorkflowKind, { name: string; description: string }> = {
   single_cheap: {
@@ -121,10 +122,10 @@ export default async function HomePage() {
                   <CardContent className="text-muted-foreground flex flex-col gap-1 text-sm">
                     <span>
                       {run.evaluation.resolved ? "Resolved" : "Unresolved"} · {run.evaluation.testsPassed}/
-                      {run.evaluation.testsTotal} tests · Value {run.evaluation.valueScore.toFixed(1)}
+                      {run.evaluation.testsTotal} tests · Value {formatScore(run.evaluation.valueScore)}
                     </span>
                     <span>
-                      ${run.costUsd.toFixed(4)} · {Math.round(run.latencyMs)} ms model ·{" "}
+                      {formatCostUsd(run.costUsd)} · {Math.round(run.latencyMs)} ms model ·{" "}
                       {Math.round(run.execution.durationMs)} ms exec
                     </span>
                   </CardContent>

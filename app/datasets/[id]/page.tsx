@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { chartableSummaries, summarizeByWorkflow } from "@/lib/dashboard/aggregate";
 import { workflowKinds } from "@/lib/domain/types";
 import { getDataset, listRuns } from "@/lib/store/file-store";
+import { formatCostUsd, formatScore } from "@/lib/utils";
 
 export default async function DatasetDetailPage({
   params,
@@ -160,8 +161,8 @@ export default async function DatasetDetailPage({
                         <TableCell>
                           {(row.resolveRate * 100).toFixed(0)}% ({row.resolvedCount}/{row.count})
                         </TableCell>
-                        <TableCell>{row.avgValue.toFixed(1)}</TableCell>
-                        <TableCell>${row.avgCost.toFixed(4)}</TableCell>
+                        <TableCell>{formatScore(row.avgValue)}</TableCell>
+                        <TableCell>{formatCostUsd(row.avgCost)}</TableCell>
                         <TableCell>{Math.round(row.avgLatencyMs)} ms</TableCell>
                       </TableRow>
                     ))}
@@ -187,7 +188,7 @@ export default async function DatasetDetailPage({
                           <CardTitle className="text-base">{run.workflow}</CardTitle>
                           <Badge variant="outline">
                             {run.evaluation.resolved ? "Resolved" : "Unresolved"} · Value{" "}
-                            {run.evaluation.valueScore.toFixed(1)}
+                            {formatScore(run.evaluation.valueScore)}
                           </Badge>
                         </div>
                       </CardHeader>

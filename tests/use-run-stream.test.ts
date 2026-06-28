@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   initialRunStreamState,
   markStalledActiveNodesFailed,
-  parseSseChunk,
   reduceStreamEvent
 } from "@/components/orchestration/use-run-stream";
+import { parseSseChunk } from "@/lib/workflows/sse";
 import type { WorkflowGraph } from "@/lib/workflows/graph";
 import type { WorkflowEvent } from "@/lib/workflows/events";
 
