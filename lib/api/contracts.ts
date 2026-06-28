@@ -10,11 +10,22 @@ const optionalPositiveNumber = z.preprocess(
   z.coerce.number().positive().optional()
 );
 
+// Hard keywords cannot be used as a module name in `from <module> import *`.
+const pythonKeywords = new Set([
+  "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class",
+  "continue", "def", "del", "elif", "else", "except", "finally", "for", "from", "global",
+  "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise", "return",
+  "try", "while", "with", "yield"
+]);
+
 const pythonIdentifier = z
   .string()
   .trim()
   .min(1)
-  .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "entryPoint must be a valid Python identifier");
+  .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "entryPoint must be a valid Python identifier")
+  .refine((value) => !pythonKeywords.has(value), {
+    message: "entryPoint must not be a Python reserved keyword"
+  });
 
 export const createRunSchema = z
   .object({
@@ -29,8 +40,7 @@ export const createRunSchema = z
     entryPoint: pythonIdentifier.optional()
   })
   .refine((data) => Boolean(data.testCode || data.benchmarkTaskId), {
-    message: "Provide testCode or a benchmarkTaskId to evaluate the repair.",
-    path: ["testCode"]
+    message: "Provide testCode or a benchmarkTaskId to evaluate the repair."
   });
 
 export const createDatasetSchema = z.object({

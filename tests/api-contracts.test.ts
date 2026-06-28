@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  createRunSchema,
+  formatZodErrors,
   parseDatasetCreateRequest,
   parseDatasetRerunRequest,
   parseRunCreateRequest
@@ -138,5 +140,23 @@ describe("createRunSchema repair fields", () => {
     expect(() =>
       parseRunCreateRequest({ ...repairBase, testCode: "assert gcd(4, 2) == 2", entryPoint: "1bad" })
     ).toThrow();
+  });
+
+  it("rejects an entryPoint that is a Python reserved keyword", () => {
+    for (const keyword of ["class", "import", "from", "def"]) {
+      expect(() =>
+        parseRunCreateRequest({ ...repairBase, testCode: "assert gcd(4, 2) == 2", entryPoint: keyword })
+      ).toThrow();
+    }
+  });
+
+  it("reports a clear top-level message when testCode and benchmarkTaskId are both missing", () => {
+    const result = createRunSchema.safeParse(repairBase);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(formatZodErrors(result.error)).toContain(
+        "Provide testCode or a benchmarkTaskId to evaluate the repair."
+      );
+    }
   });
 });
