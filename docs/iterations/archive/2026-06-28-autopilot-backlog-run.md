@@ -159,3 +159,21 @@ Grok bundled review (PENDING posted, session cleaned up). 0 bugs; 1 suggestion +
 ### Scope note
 
 This eliminates the every-event churn the issue called out. Re-pulsing on actual node transitions still occurs — fully avoiding it needs a per-node tween lifecycle (persisting tweens across rebuilds), deferred as higher-risk/low-value for an untested animation surface.
+
+## Cycle 8 — `/workflows` guide page (A2)
+
+- Merged: PR #15 → `main` as merge commit `2964b20` (2026-06-28)
+- Type: feature / new page (Grok-implemented, orchestrator-validated; lightweight plan = the Grok contract, self-accepted — a static informational page didn't warrant a separate spec doc)
+
+### Tasks (commit-tagged)
+
+- [x] A2 — `/workflows` guide page + nav link. (commit on the merged branch + review fix)
+  - Server-rendered page with a card per workflow: label as an `<h2>`, a cost/quality `Badge`, a repair-framed description, the workflow graph via `OrchestrationCanvas` in static mode, and a derived "Flow:" role-sequence line (text alternative for the aria-hidden SVG). Added a "Workflows" nav link in `app/layout.tsx`. Documented in `docs/architecture.md` App Routes.
+
+### Review
+
+Grok bundled review (PENDING posted, session cleaned up). 0 bugs; 3 a11y suggestions + 1 nit. Addressed: semantic `<h2>` headings and the text "Flow:" alternative. Declined: badge programmatic association (self-explanatory tag text) and recoloring static "pending" nodes (neutral is correct for a topology diagram).
+
+### Validation
+
+`npm run typecheck` clean, `npm run lint` clean, `npm test` 108 passed / 1 skipped, `npm run build` OK (`/workflows` prerendered as static).
