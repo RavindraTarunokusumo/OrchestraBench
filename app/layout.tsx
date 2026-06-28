@@ -16,7 +16,8 @@ const navLinks = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/workflows", label: "Workflows" },
   { href: "/datasets", label: "Datasets" },
-  { href: "/api/export", label: "Export JSON" }
+  { href: "/api/export", label: "Export JSON" },
+  { href: "/api/export/csv", label: "Export CSV" }
 ];
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
