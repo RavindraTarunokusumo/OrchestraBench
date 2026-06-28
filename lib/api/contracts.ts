@@ -10,17 +10,28 @@ const optionalPositiveNumber = z.preprocess(
   z.coerce.number().positive().optional()
 );
 
-export const createRunSchema = z.object({
-  title: z.string().trim().min(1),
-  language: z.string().trim().min(1),
-  prompt: z.string().trim().min(1),
-  code: z.string().trim().min(1),
-  workflow: workflowSchema,
-  costLimitUsd: optionalPositiveNumber,
-  benchmarkTaskId: z.string().trim().min(1).optional(),
-  testCode: z.string().trim().min(1).optional(),
-  entryPoint: z.string().trim().min(1).optional()
-});
+const pythonIdentifier = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[A-Za-z_][A-Za-z0-9_]*$/, "entryPoint must be a valid Python identifier");
+
+export const createRunSchema = z
+  .object({
+    title: z.string().trim().min(1),
+    language: z.string().trim().min(1),
+    prompt: z.string().trim().min(1),
+    code: z.string().trim().min(1),
+    workflow: workflowSchema,
+    costLimitUsd: optionalPositiveNumber,
+    benchmarkTaskId: z.string().trim().min(1).optional(),
+    testCode: z.string().trim().min(1).optional(),
+    entryPoint: pythonIdentifier.optional()
+  })
+  .refine((data) => Boolean(data.testCode || data.benchmarkTaskId), {
+    message: "Provide testCode or a benchmarkTaskId to evaluate the repair.",
+    path: ["testCode"]
+  });
 
 export const createDatasetSchema = z.object({
   title: z.string().trim().min(1),
