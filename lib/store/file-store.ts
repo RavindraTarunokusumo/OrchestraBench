@@ -1,6 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { BenchmarkTask, Evaluation, RunInput, RunResult, WorkflowKind } from "@/lib/domain/types";
+import type {
+  BenchmarkTask,
+  Evaluation,
+  ExecutionResult,
+  RunInput,
+  RunResult,
+  WorkflowKind
+} from "@/lib/domain/types";
 import { createConfiguredExecutor } from "@/lib/execution/provider";
 import { createConfiguredProvider } from "@/lib/providers/provider";
 import { runWorkflow } from "@/lib/workflows/runner";
@@ -18,6 +25,46 @@ export type DatasetRerunResult = {
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "orchestrabench.json");
 let mutationQueue: Promise<unknown> = Promise.resolve();
+
+const DEFAULT_EXECUTION: ExecutionResult = {
+  resolved: false,
+  testsPassed: 0,
+  testsTotal: 0,
+  exitCode: null,
+  timedOut: false,
+  stdout: "",
+  stderr: "",
+  durationMs: 0,
+  backend: "mock"
+};
+
+const DEFAULT_EVALUATION: Evaluation = {
+  resolved: false,
+  testsPassed: 0,
+  testsTotal: 0,
+  valueScore: 0
+};
+
+export function normalizeRun(run: RunResult): RunResult {
+  const execution = run.execution ?? DEFAULT_EXECUTION;
+  const evaluation = run.evaluation ?? {
+    ...DEFAULT_EVALUATION,
+    resolved: execution.resolved,
+    testsPassed: execution.testsPassed,
+    testsTotal: execution.testsTotal
+  };
+
+  return {
+    ...run,
+    execution,
+    evaluation,
+    candidateCode: run.candidateCode ?? "",
+    finalAnswer: run.finalAnswer ?? "",
+    calls: Array.isArray(run.calls) ? run.calls : [],
+    costUsd: run.costUsd ?? 0,
+    latencyMs: run.latencyMs ?? 0
+  };
+}
 
 export async function listRuns(): Promise<RunResult[]> {
   const data = await readData();
@@ -195,7 +242,10 @@ async function readData(): Promise<AppData> {
     const raw = await readFile(DATA_FILE, "utf8");
     const parsed = JSON.parse(raw) as unknown;
     if (isAppData(parsed)) {
-      return parsed;
+      return {
+        runs: parsed.runs.map(normalizeRun),
+        datasets: parsed.datasets
+      };
     }
     throw new Error("Stored OrchestraBench data has an invalid shape.");
   } catch (error) {
