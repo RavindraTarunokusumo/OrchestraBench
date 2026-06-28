@@ -75,3 +75,27 @@ Grok bundled review (PENDING posted, session cleaned up). 2 bugs + 1 suggestion,
 ### Validation
 
 `npm run typecheck` clean, `npm run lint` clean, `npm test` 99 passed / 1 skipped.
+
+## Cycle 4 — Shared utilities & SSE wire framing (F4, F3)
+
+- Merged: PR #11 → `main` as merge commit `56fdad1` (2026-06-28)
+- Type: refactor / dedupe (Grok-implemented, orchestrator-validated)
+
+### Tasks (commit-tagged)
+
+- [x] F4 — shared cost/score formatters. (40d5e6e)
+  - `formatCostUsd` / `formatScore` added to `lib/utils.ts`; inline `$${n.toFixed(4)}` and `valueScore.toFixed(1)` deduped across home, dashboard, datasets, run-detail, new-run, and the orchestration canvas/node. New-run value score standardized to one decimal. Specialized formatters (chart-axis tick, percentages, cost math, verifier confidence) left untouched.
+- [x] F3 — shared SSE wire framing. (5e7add3)
+  - Extracted `lib/workflows/sse.ts` (`encodeSseEvent` + `parseSseChunk` sharing `SSE_DATA_PREFIX`/`SSE_DELIMITER`); the stream route encodes via `encodeSseEvent` and `use-run-stream` imports `parseSseChunk` (no re-export shim; test import updated). Round-trip test added.
+
+### Review
+
+Grok bundled review (PENDING posted, session cleaned up). 1 bug + 2 suggestions, all resolved by reasoning without code changes: (1) new-run score 2→1 decimal is the intended standardization F4 unifies on — kept; (2) the canvas HUD now shows `$` — that is a fix (the old `Cost ${…}` swallowed the `$` into the interpolation); (3) `parseSseChunk`'s unguarded `JSON.parse` is pre-existing and frames are self-produced via `JSON.stringify`, so a malformed complete frame can't occur — out of scope for a pure refactor.
+
+### Validation
+
+`npm run typecheck` clean, `npm run lint` clean, `npm test` 105 passed / 1 skipped (one flaky file-store-race failure on first run; clean on re-run — root cause is F1, cycle 6).
+
+### Note
+
+The dedicated `agitated-volhard-b5e234` worktree was deleted by OneDrive mid-cycle-4 (after the F4/F3 commits, before push). The branch + commits + git notes survived in the shared git dir; the run resumed in the primary checkout. Remaining cycles run on feature branches in the primary checkout (sequential), avoiding new OneDrive worktrees.
