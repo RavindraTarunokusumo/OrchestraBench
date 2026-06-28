@@ -28,6 +28,7 @@ export type WorkflowEvent =
       status: RunStatus;
       costUsd: number;
       latencyMs: number;
+      executionMs: number;
       resolved: boolean;
       testsPassed: number;
       testsTotal: number;

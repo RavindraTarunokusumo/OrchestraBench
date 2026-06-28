@@ -31,6 +31,7 @@ export type RunFinalSummary = {
   status: RunStatus;
   costUsd: number;
   latencyMs: number;
+  executionMs: number;
   resolved: boolean;
   testsPassed: number;
   testsTotal: number;
@@ -156,6 +157,7 @@ export function reduceStreamEvent(prev: RunStreamState, event: WorkflowEvent): R
           status: event.status,
           costUsd: event.costUsd,
           latencyMs: event.latencyMs,
+          executionMs: event.executionMs,
           resolved: event.resolved,
           testsPassed: event.testsPassed,
           testsTotal: event.testsTotal,

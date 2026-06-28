@@ -139,7 +139,10 @@ export function NewRunClient() {
                   <SummaryStat label="Status" value={finalSummary.status} />
                   <SummaryStat label="Tests" value={`${testsPassed}/${testsTotal}`} />
                   <SummaryStat label="Cost" value={`$${finalSummary.costUsd.toFixed(4)}`} />
-                  <SummaryStat label="Latency" value={`${finalSummary.latencyMs.toLocaleString()}ms`} />
+                  <SummaryStat
+                    label="Latency"
+                    value={`${finalSummary.latencyMs.toLocaleString()}ms model · ${finalSummary.executionMs.toLocaleString()}ms exec`}
+                  />
                   <SummaryStat label="Value score" value={finalSummary.valueScore.toFixed(2)} />
                 </div>
 

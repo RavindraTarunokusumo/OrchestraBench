@@ -85,6 +85,7 @@ describe("SSE serialization (route-equivalent)", () => {
       status: saved.status,
       costUsd: saved.costUsd,
       latencyMs: saved.latencyMs,
+      executionMs: saved.execution.durationMs,
       resolved: saved.execution.resolved,
       testsPassed: saved.execution.testsPassed,
       testsTotal: saved.execution.testsTotal,
@@ -107,6 +108,7 @@ describe("SSE serialization (route-equivalent)", () => {
       expect(finalEvent.status).toBe("completed");
       expect(finalEvent.costUsd).toBe(saved.costUsd);
       expect(finalEvent.latencyMs).toBe(saved.latencyMs);
+      expect(finalEvent.executionMs).toBe(saved.execution.durationMs);
       expect(finalEvent.resolved).toBe(saved.execution.resolved);
       expect(finalEvent.testsPassed).toBe(saved.execution.testsPassed);
       expect(finalEvent.testsTotal).toBe(saved.execution.testsTotal);
