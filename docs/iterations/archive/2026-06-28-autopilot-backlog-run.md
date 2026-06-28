@@ -54,4 +54,24 @@ Grok bundled review (PENDING posted, session cleaned up). 4 bugs + 3 suggestions
 
 ### Follow-up
 
-- The home card now reads `run.execution.durationMs`; cycle 3 (D4 legacy normalizer) must cover this access for pre-pivot local runs that lack `execution`.
+- The home card now reads `run.execution.durationMs`; cycle 3 (D4 legacy normalizer) must cover this access for pre-pivot local runs that lack `execution`. (Done in cycle 3.)
+
+## Cycle 3 — Local-dev & legacy-data robustness (D8, D4)
+
+- Merged: PR #10 → `main` as merge commit `2b4cee3` (2026-06-28)
+- Type: enhancement / robustness (Grok-implemented, orchestrator-validated)
+
+### Tasks (commit-tagged)
+
+- [x] D8 — mock provider emits runnable code. (830b8ff, 3cabd46)
+  - Non-verifier roles now return a ```python``` block whose body is `extractMockCandidate(prompt)` (the code after the first `Buggy code:` label, else the largest embedded fenced block via `extractCode`, else a stub), so local dev without an E2B key exercises extraction→execution. Verifier still returns confidence JSON.
+- [x] D4 — normalize legacy persisted runs. (8718824, 3cabd46)
+  - `readData` maps loaded runs through a pure `normalizeRun` that spreads safe defaults into `execution`/`evaluation` (handles wholly- and partially-missing nested objects) and fills `candidateCode`/`finalAnswer`/`calls`/`costUsd`/`latencyMs`, fixing crashes on the run-detail and home pages for pre-pivot local `.data` (gitignored).
+
+### Review
+
+Grok bundled review (PENDING posted, session cleaned up). 2 bugs + 1 suggestion, all addressed in `3cabd46`: first-occurrence label (`indexOf`), deep-merge normalization for partial nested fields, and largest-fenced-block alignment via `extractCode`.
+
+### Validation
+
+`npm run typecheck` clean, `npm run lint` clean, `npm test` 99 passed / 1 skipped.
