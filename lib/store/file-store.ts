@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   BenchmarkTask,
@@ -268,11 +268,23 @@ async function writeData(data: AppData): Promise<void> {
   await mkdir(DATA_DIR, { recursive: true });
   const tempFile = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
   await writeFile(tempFile, JSON.stringify(data, null, 2), "utf8");
-  await renameWithRetry(tempFile, DATA_FILE);
+  try {
+    await renameWithRetry(tempFile, DATA_FILE);
+  } catch (error) {
+    await unlink(tempFile).catch(() => undefined);
+    throw error;
+  }
 }
 
 const RETRYABLE_RENAME_CODES = new Set(["EPERM", "EACCES", "EBUSY", "EEXIST"]);
 
+/**
+ * Retries the temp-file rename on transient Windows contention (a reader briefly
+ * holding the target → EPERM/EACCES/EBUSY/EEXIST). This prevents a crash under
+ * concurrent access; it does NOT provide multi-writer consistency — concurrent
+ * processes can still lose each other's updates (last write wins), since the
+ * read-modify-write is only serialized in-process via `mutationQueue`.
+ */
 async function renameWithRetry(from: string, to: string, attempts = 5): Promise<void> {
   let lastError: NodeJS.ErrnoException | undefined;
   for (let attempt = 0; attempt < attempts; attempt++) {
