@@ -34,4 +34,12 @@ describe("checkBudget", () => {
     expect(status.withinLatency).toBe(false);
     expect(status.budget).toEqual(workflowBudgets.single_cheap);
   });
+
+  it("treats exact-equality cost and latency as within budget (inclusive bound)", () => {
+    const { costUsd, latencyMs } = workflowBudgets.single_cheap;
+    const status = checkBudget("single_cheap", costUsd, latencyMs);
+    expect(status.withinCost).toBe(true);
+    expect(status.withinLatency).toBe(true);
+    expect(status.withinBudget).toBe(true);
+  });
 });

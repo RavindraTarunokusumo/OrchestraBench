@@ -40,7 +40,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Metric
           label="Resolved"
           value={run.execution.resolved ? "Yes" : "No"}
@@ -48,7 +48,16 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         <Metric label="Tests" value={`${run.execution.testsPassed}/${run.execution.testsTotal}`} />
         <Metric label="Value" value={formatScore(run.evaluation.valueScore)} />
         <Metric label="Cost" value={formatCostUsd(run.costUsd)} />
-        <Metric label="Budget" value={budget.withinBudget ? "Within" : "Over"} />
+        <Metric
+          label="Budget"
+          value={
+            budget.withinBudget
+              ? "Within"
+              : `Over (${[!budget.withinCost && "cost", !budget.withinLatency && "latency"]
+                  .filter(Boolean)
+                  .join(" + ")})`
+          }
+        />
       </div>
 
       <Card>
