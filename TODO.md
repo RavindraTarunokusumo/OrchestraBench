@@ -3,6 +3,7 @@
 This file contains active or future work only.
 
 Completed sessions are archived under `docs/iterations/archive/`:
+- `2026-06-28-autopilot-backlog-run.md` — Autopilot run over the backlog (in progress): cycle 0 Autopilot doc (PR #7, merge `e62d4d5`); cycle 1 repair-run input validation (PR #8, merge `6c23367`).
 - `2026-06-27-repair-mode-phase1-e2e-verification.md` — QuixBugs pin fix + live E2B end-to-end proof (PR #6, merge `2d8526d`).
 - `2026-06-27-repair-mode-phase2-dashboard-datasets.md` — dashboard/datasets repair-metrics repurpose (PR #5, merge `c3be558`).
 - `2026-06-27-benchmark-repair-mode-phase1.md` — code-repair pivot (PR #3, merge `f9c80d2`).
@@ -11,11 +12,6 @@ Completed sessions are archived under `docs/iterations/archive/`:
 ## Autopilot Run — Backlog (started 2026-06-28)
 
 Autonomous run over the whole backlog. Recorded decisions: cohesive small fixes are batched into themed cycles (each a reviewable PR; every sub-item still its own commit per Workflow Rule 1); minor single-concern patches (≤2 files, no new module) are implemented directly with the full verification gate; substantive cycles (new modules/pages, cross-cutting behavior) are delegated to Grok per the handoff. Mega-features needing external infra/accounts are spec'd with implementation deferred.
-
-- [ ] **Cycle 1 — Repair-run input validation** (`feat/repair-input-validation`)
-  - [ ] F5: validate `entryPoint` as a Python identifier (`^[A-Za-z_][A-Za-z0-9_]*$`) in `createRunSchema` — flows into `from ${moduleName} import *` and `${module}.py` in `lib/execution/e2b.ts`. Sandbox-only (E2B is the trust boundary; security review PR #3 ruled out a host vuln) — cheap robustness hardening.
-  - [ ] D13: add a repair-mode `.refine()` to `createRunSchema` — require `testCode` or `benchmarkTaskId` (today invalid inputs fail later with a generic error). Resolvability of the task is a runtime concern, not schema.
-  - [ ] (mod, Rule 2) Update the `tests/api-contracts.test.ts` numeric-coercion test to supply a `benchmarkTaskId` so it stays valid under the new refine.
 
 - [ ] **Cycle 2 — Execution scoring & latency fidelity**
   - [ ] D9: `parsePytest` partial credit — parse pytest's passed/failed summary instead of binary 0/all (`scoreExecution` already supports partials).
