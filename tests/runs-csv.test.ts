@@ -75,4 +75,10 @@ describe("runsToCsv", () => {
     const row = csv.split("\n")[1];
     expect(row).toContain('"Hello, ""world"""');
   });
+
+  it("wraps fields with newlines/carriage returns so they aren't read as row breaks", () => {
+    const csv = runsToCsv([minimalRun({ title: "line1\nline2\r" })]);
+    expect(csv).toContain('"line1\nline2\r"');
+    expect(csv.split("\n").filter((line) => line.startsWith("run_1")).length).toBe(1);
+  });
 });
