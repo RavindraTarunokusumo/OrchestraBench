@@ -137,3 +137,25 @@ Grok bundled review (PENDING posted, session cleaned up). 1 bug + 3 suggestions 
 ### Validation
 
 `npm run typecheck` clean, `npm run lint` clean, `npm test` 108 passed / 1 skipped under parallelism.
+
+## Cycle 7 — OrchestrationCanvas tween signature (F2)
+
+- Merged: PR #14 → `main` as merge commit `17bdbd8` (2026-06-28)
+- Type: perf (implemented directly — minor patch, 1 file)
+
+### Tasks (commit-tagged)
+
+- [x] F2 — rebuild the GSAP context only on active/flowing changes. (239af07)
+  - The canvas `useLayoutEffect` depended on the whole `nodeStates`, so every stream event reverted/rebuilt the GSAP context (re-querying rings, `getTotalLength` reflow), restarting pulses. The effect is now keyed on a derived `animationSignature` (active node ids + flowing edge keys); the effect body is unchanged, so non-active-set updates (preview/cost/total) no longer churn the animation.
+
+### Review
+
+Grok bundled review (PENDING posted, session cleaned up). 0 bugs; 1 suggestion + 1 nit, both declined with reasoning: the `nodeStates` memo dep is required by `exhaustive-deps` (the body reads it), and the once-resolved theme color is pre-existing.
+
+### Validation
+
+`npm run typecheck` clean, `npm run lint` clean, `npm test` 108 passed / 1 skipped, `npm run build` OK. (Canvas has no unit tests; build + typecheck + lint are the gate.)
+
+### Scope note
+
+This eliminates the every-event churn the issue called out. Re-pulsing on actual node transitions still occurs — fully avoiding it needs a per-node tween lifecycle (persisting tweens across rebuilds), deferred as higher-risk/low-value for an untested animation surface.
