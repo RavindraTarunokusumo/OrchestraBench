@@ -16,13 +16,83 @@ function failed(message: string): ExecutionResult {
   };
 }
 
-/** Parse pytest's summary into passed/total. Each `assert` line is one logical test. */
-function parsePytest(stdout: string, assertCount: number): { passed: number; total: number; resolved: boolean } {
-  const total = Math.max(assertCount, 1);
-  if (/\bpassed\b/.test(stdout) && !/\bfailed\b/.test(stdout) && !/\berror\b/i.test(stdout)) {
-    return { passed: total, total, resolved: true };
+/** Net change in open (){}[] brackets on a line — used to span multi-line asserts. */
+function bracketDelta(line: string): number {
+  let delta = 0;
+  for (const char of line) {
+    if (char === "(" || char === "[" || char === "{") delta += 1;
+    else if (char === ")" || char === "]" || char === "}") delta -= 1;
   }
-  return { passed: 0, total, resolved: false };
+  return delta;
+}
+
+/**
+ * Build a pytest file with one test function per `assert`, so pytest counts
+ * asserts individually (enabling partial credit). A multi-line assert (one with
+ * unbalanced brackets) keeps its continuation lines in the same function body;
+ * other non-assert lines become shared module-level preamble after the import.
+ */
+export function buildPytestFile(moduleName: string, testCode: string): string {
+  const preamble: string[] = [];
+  const blocks: string[][] = [];
+  let current: string[] | null = null;
+  let depth = 0;
+
+  for (const line of testCode.split("\n")) {
+    if (current && depth > 0) {
+      current.push(line);
+      depth += bracketDelta(line);
+      continue;
+    }
+    if (line.trim().startsWith("assert")) {
+      current = [line];
+      blocks.push(current);
+      depth = bracketDelta(line);
+    } else {
+      current = null;
+      depth = 0;
+      preamble.push(line);
+    }
+  }
+
+  const parts = [`from ${moduleName} import *`, ""];
+  if (preamble.length > 0) {
+    parts.push(...preamble, "");
+  }
+
+  blocks.forEach((block, index) => {
+    parts.push(`def test_case_${index}():`);
+    for (const line of block) {
+      parts.push(`    ${line}`);
+    }
+    parts.push("");
+  });
+
+  return parts.join("\n");
+}
+
+/**
+ * Parse pytest's final summary line into pass/total. `total` is floored to
+ * `assertCount` (the number of test functions we generated) so collection
+ * errors or a "0 passed" summary still report N tests, not 0 or 1.
+ */
+export function parsePytest(stdout: string, assertCount: number): { passed: number; total: number; resolved: boolean } {
+  const lines = stdout.trim().split("\n").filter((line) => line.trim().length > 0);
+  const summary = lines.length > 0 ? lines[lines.length - 1] : "";
+  const passedMatch = summary.match(/(\d+)\s+passed/);
+  const failedMatch = summary.match(/(\d+)\s+failed/);
+  const errorMatch = summary.match(/(\d+)\s+errors?/i);
+
+  if (!passedMatch && !failedMatch && !errorMatch) {
+    return { passed: 0, total: assertCount, resolved: false };
+  }
+
+  const passed = passedMatch ? Number(passedMatch[1]) : 0;
+  const failed = failedMatch ? Number(failedMatch[1]) : 0;
+  const errors = errorMatch ? Number(errorMatch[1]) : 0;
+  const total = Math.max(passed + failed + errors, assertCount);
+  const resolved = failed === 0 && errors === 0 && passed > 0 && passed === total;
+  return { passed, total, resolved };
 }
 
 export function createE2bExecutor(): SandboxExecutor {
@@ -41,10 +111,7 @@ export function createE2bExecutor(): SandboxExecutor {
       try {
         sandbox = await Sandbox.create();
         await sandbox.files.write(`${moduleName}.py`, args.candidateCode);
-        const testFile = `from ${moduleName} import *\n\ndef test_candidate():\n${args.testCode
-          .split("\n")
-          .map((line) => `    ${line}`)
-          .join("\n")}\n`;
+        const testFile = buildPytestFile(moduleName, args.testCode);
         await sandbox.files.write("test_candidate.py", testFile);
         const run = await sandbox.commands.run("python -m pytest -q test_candidate.py", {
           timeoutMs: args.timeoutMs

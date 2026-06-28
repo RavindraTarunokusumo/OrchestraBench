@@ -44,6 +44,7 @@ export async function POST(request: Request) {
           status: saved.status,
           costUsd: saved.costUsd,
           latencyMs: saved.latencyMs,
+          executionMs: saved.execution.durationMs,
           resolved: saved.execution.resolved,
           testsPassed: saved.execution.testsPassed,
           testsTotal: saved.execution.testsTotal,

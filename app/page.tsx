@@ -123,7 +123,10 @@ export default async function HomePage() {
                       {run.evaluation.resolved ? "Resolved" : "Unresolved"} · {run.evaluation.testsPassed}/
                       {run.evaluation.testsTotal} tests · Value {run.evaluation.valueScore.toFixed(1)}
                     </span>
-                    <span>${run.costUsd.toFixed(4)} · {Math.round(run.latencyMs)} ms</span>
+                    <span>
+                      ${run.costUsd.toFixed(4)} · {Math.round(run.latencyMs)} ms model ·{" "}
+                      {Math.round(run.execution.durationMs)} ms exec
+                    </span>
                   </CardContent>
                 </Card>
               </Link>
