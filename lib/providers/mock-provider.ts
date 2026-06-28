@@ -28,6 +28,23 @@ export function createMockProvider(options: MockProviderOptions = {}): ModelProv
   };
 }
 
+const BUGGY_CODE_MARKER = "Buggy code:";
+const FENCED_BLOCK = /```(?:[a-zA-Z0-9_-]+)?[\n ]([\s\S]*?)```/;
+
+export function extractMockCandidate(prompt: string): string {
+  const lastMarker = prompt.lastIndexOf(BUGGY_CODE_MARKER);
+  if (lastMarker !== -1) {
+    return prompt.slice(lastMarker + BUGGY_CODE_MARKER.length).trim();
+  }
+
+  const fenced = FENCED_BLOCK.exec(prompt);
+  if (fenced) {
+    return fenced[1].replace(/\n$/, "").trim();
+  }
+
+  return "# mock candidate\npass";
+}
+
 function buildMockText(request: ModelRequest, verifierConfidence: number): string {
   if (request.role === "verifier") {
     return JSON.stringify({
@@ -39,19 +56,8 @@ function buildMockText(request: ModelRequest, verifierConfidence: number): strin
     });
   }
 
-  if (request.role === "judge") {
-    return "Judge synthesis: panel consensus flags unchecked nullable access and recommends a guard before role access.";
-  }
-
-  if (request.role === "planner") {
-    return "Plan: inspect input validation, nullable access, authorization logic, and edge cases.";
-  }
-
-  if (request.role === "finalizer") {
-    return "Final report: likely bug found in unsafe user access; add a null guard and tests for missing users.";
-  }
-
-  return `${request.role} report: Found a likely null/undefined access bug and recommends defensive validation.`;
+  const candidate = extractMockCandidate(request.prompt);
+  return `\`\`\`python\n${candidate}\n\`\`\``;
 }
 
 function estimateTokens(text: string): number {
