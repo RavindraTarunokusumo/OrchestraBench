@@ -31,3 +31,27 @@ Grok bundled review (PENDING posted, ephemeral session cleaned up). 1 bug + 2 su
 ### Validation
 
 `npm run typecheck` clean, `npm run lint` clean (pre-existing next-lint deprecation only), `npm test` 84 passed / 1 skipped (+5 contract tests vs the 79 baseline).
+
+## Cycle 2 — Execution scoring & latency fidelity (D9, D10)
+
+- Merged: PR #9 → `main` as merge commit `75c9389` (2026-06-28)
+- Type: enhancement (Grok-implemented, orchestrator-validated)
+
+### Tasks (commit-tagged)
+
+- [x] D9 — partial pytest credit in `lib/execution/e2b.ts`. (368e5be, 46ef612)
+  - Each `assert` line becomes its own pytest test function (multi-line asserts span via bracket-depth tracking; non-assert lines kept as module-level preamble), so pytest counts asserts individually. `parsePytest` parses passed/failed/error counts from the last summary line and floors the denominator to `assertCount` (collection errors / "0 passed" report 0/N). `buildPytestFile`/`parsePytest` exported and unit-tested without E2B.
+- [x] D10 — surface execution duration. (410ae34, 46ef612)
+  - `executionMs` added to the `run-final` event (from `execution.durationMs`), threaded through `use-run-stream`; home cards and the live summary show "model · exec" timing. `RunResult.latencyMs` semantics unchanged.
+
+### Review
+
+Grok bundled review (PENDING posted, session cleaned up). 4 bugs + 3 suggestions + 1 nit; 6 addressed in `46ef612` (denominator flooring, last-line parsing, multi-line asserts, "Timing" label), 2 declined with reasoning (skipped-test parsing — our harness never skips; pre-run-final exec timing — nit).
+
+### Validation
+
+`npm run typecheck` clean, `npm run lint` clean, `npm test` 93 passed / 1 skipped.
+
+### Follow-up
+
+- The home card now reads `run.execution.durationMs`; cycle 3 (D4 legacy normalizer) must cover this access for pre-pivot local runs that lack `execution`.
