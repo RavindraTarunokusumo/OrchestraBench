@@ -14,6 +14,7 @@ export const metadata: Metadata = {
 const navLinks = [
   { href: "/runs/new", label: "New Run" },
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/workflows", label: "Workflows" },
   { href: "/datasets", label: "Datasets" },
   { href: "/api/export", label: "Export JSON" }
 ];
