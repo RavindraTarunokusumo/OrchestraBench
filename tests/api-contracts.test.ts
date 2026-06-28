@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  createRunSchema,
+  formatZodErrors,
   parseDatasetCreateRequest,
   parseDatasetRerunRequest,
   parseRunCreateRequest
@@ -34,6 +36,7 @@ describe("API request parsers", () => {
         prompt: "Find bugs.",
         code: "export const ok = true;",
         workflow: "single_cheap",
+        benchmarkTaskId: "task_1",
         costLimitUsd: ""
       }).costLimitUsd
     ).toBeUndefined();
@@ -99,17 +102,61 @@ describe("API request parsers", () => {
 });
 
 describe("createRunSchema repair fields", () => {
+  const repairBase = {
+    title: "gcd",
+    language: "python",
+    prompt: "Fix the bug.",
+    code: "def gcd(a, b): return a",
+    workflow: "single_cheap" as const
+  };
+
   it("accepts testCode and entryPoint", () => {
     const input = parseRunCreateRequest({
-      title: "gcd",
-      language: "python",
-      prompt: "Fix the bug.",
-      code: "def gcd(a, b): return a",
-      workflow: "single_cheap",
+      ...repairBase,
       testCode: "assert gcd(4, 2) == 2",
       entryPoint: "gcd"
     });
     expect(input.testCode).toBe("assert gcd(4, 2) == 2");
     expect(input.entryPoint).toBe("gcd");
+  });
+
+  it("accepts a benchmarkTaskId without testCode", () => {
+    const input = parseRunCreateRequest({ ...repairBase, benchmarkTaskId: "task_1" });
+    expect(input.benchmarkTaskId).toBe("task_1");
+  });
+
+  it("rejects a run with neither testCode nor benchmarkTaskId", () => {
+    expect(() => parseRunCreateRequest(repairBase)).toThrow();
+  });
+
+  it("rejects an entryPoint that is not a Python identifier", () => {
+    expect(() =>
+      parseRunCreateRequest({
+        ...repairBase,
+        testCode: "assert gcd(4, 2) == 2",
+        entryPoint: "import os; os.system('x')"
+      })
+    ).toThrow();
+    expect(() =>
+      parseRunCreateRequest({ ...repairBase, testCode: "assert gcd(4, 2) == 2", entryPoint: "1bad" })
+    ).toThrow();
+  });
+
+  it("rejects an entryPoint that is a Python reserved keyword", () => {
+    for (const keyword of ["class", "import", "from", "def"]) {
+      expect(() =>
+        parseRunCreateRequest({ ...repairBase, testCode: "assert gcd(4, 2) == 2", entryPoint: keyword })
+      ).toThrow();
+    }
+  });
+
+  it("reports a clear top-level message when testCode and benchmarkTaskId are both missing", () => {
+    const result = createRunSchema.safeParse(repairBase);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(formatZodErrors(result.error)).toContain(
+        "Provide testCode or a benchmarkTaskId to evaluate the repair."
+      );
+    }
   });
 });
