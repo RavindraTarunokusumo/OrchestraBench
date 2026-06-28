@@ -145,17 +145,17 @@ export async function runWorkflow({
       const planner = await executeCall(state, provider, "planner", {
         role: "planner",
         model: CHEAP_MODEL,
-        prompt: `Plan a code review for this task:\n${input.prompt}\n\n${input.code}`
+        prompt: `Plan how to fix the bug in this code so its tests pass:\n${input.prompt}\n\n${input.code}`
       });
       const worker = await executeCall(state, provider, "worker", {
         role: "worker",
         model: CHEAP_MODEL,
-        prompt: `Use this plan to inspect the code:\n${planner.response}\n\n${input.code}`
+        prompt: `Apply this plan to produce a corrected version of the code:\n${planner.response}\n\n${input.code}`
       });
       const verifier = await executeCall(state, provider, "verifier", {
         role: "verifier",
         model: CHEAP_MODEL,
-        prompt: `Attack this answer for missed bugs and weak claims:\n${worker.response}`
+        prompt: `Critique this proposed fix for correctness and any remaining bugs:\n${worker.response}`
       });
       const finalizer = await executeCall(state, provider, "finalizer", {
         role: "finalizer",
