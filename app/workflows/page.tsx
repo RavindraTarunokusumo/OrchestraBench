@@ -1,6 +1,6 @@
 import { OrchestrationCanvas } from "@/components/orchestration/canvas";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
 import { buildWorkflowGraph } from "@/lib/workflows/graph";
 import { workflowLabels } from "@/lib/workflows/labels";
@@ -35,20 +35,28 @@ export default function WorkflowsPage() {
       </div>
 
       <div className="flex flex-col gap-6">
-        {workflowKinds.map((kind) => (
-          <Card key={kind}>
-            <CardHeader>
-              <div className="flex flex-wrap items-center gap-2">
-                <CardTitle>{workflowLabels[kind]}</CardTitle>
-                <Badge variant="outline">{TAGS[kind]}</Badge>
-              </div>
-              <CardDescription>{DESCRIPTIONS[kind]}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <OrchestrationCanvas graph={buildWorkflowGraph(kind)} nodeStates={{}} mode="static" />
-            </CardContent>
-          </Card>
-        ))}
+        {workflowKinds.map((kind) => {
+          const graph = buildWorkflowGraph(kind);
+          const flow = [...graph.nodes]
+            .sort((a, b) => a.column - b.column || a.row - b.row)
+            .map((node) => node.label)
+            .join(" → ");
+          return (
+            <Card key={kind}>
+              <CardHeader>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="leading-none font-semibold">{workflowLabels[kind]}</h2>
+                  <Badge variant="outline">{TAGS[kind]}</Badge>
+                </div>
+                <CardDescription>{DESCRIPTIONS[kind]}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <OrchestrationCanvas graph={graph} nodeStates={{}} mode="static" />
+                <p className="text-xs text-muted-foreground">Flow: {flow}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </main>
   );
