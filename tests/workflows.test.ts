@@ -106,6 +106,21 @@ describe("runWorkflow", () => {
     });
   });
 
+  it("feeds the worker fix and verifier critique into the finalizer for planner_worker_verifier", async () => {
+    const result = await runWorkflow({
+      input: { ...baseInput, workflow: "planner_worker_verifier" },
+      provider: createMockProvider(),
+      executor: mockExecutor
+    });
+
+    const finalizer = result.calls.find((call) => call.role === "finalizer");
+    const worker = result.calls.find((call) => call.role === "worker");
+    expect(finalizer).toBeDefined();
+    expect(worker).toBeDefined();
+    expect(finalizer?.prompt).toContain("A worker proposed this fix:");
+    expect(finalizer?.prompt).toContain(worker!.response);
+  });
+
   it("returns partial status when execution does not resolve", async () => {
     const result = await runWorkflow({
       input: { ...baseInput, workflow: "single_cheap" },
