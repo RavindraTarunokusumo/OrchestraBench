@@ -15,13 +15,15 @@ OrchestraBench is a Next.js MVP for benchmarking code-repair workflows across di
 ## Implementation Snapshot
 
 - App: Next.js App Router with React server components and server actions.
-- Domain: Code-repair benchmarks (workflows emit a fix; tests decide pass/fail). QuixBugs is the first ingested source.
+- UX: Benchmark-centric navigation — dashboard benchmark cards, `/benchmarks/[slug]` task browser, full-suite runs at `/benchmarks/[slug]/run`; per-task runs keep the orchestration canvas on `/runs/new?taskId=…`.
+- Domain: Code-repair benchmarks (workflows emit a fix; tests decide pass/fail). QuixBugs is the first ingested source; tasks group into benchmarks via `lib/benchmarks/catalog.ts`.
 - Workflows: `single_cheap`, `single_strong`, `panel_judge`, `cheap_first`, and `planner_worker_verifier`.
 - Persistence now: `.data/orchestrabench.json` via `lib/store/file-store.ts`.
 - Persistence target: Prisma models in `prisma/schema.prisma` for PostgreSQL.
 - Providers: deterministic mock provider by default; OpenRouter when `OPENROUTER_API_KEY` is set.
 - Execution: mock sandbox executor by default; E2B when `E2B_API_KEY` is set (`lib/execution/`).
 - Evaluation: test-execution based — resolved + partial credit + value score from `lib/evaluation/score-execution.ts`.
+- Observability: optional LangSmith tracing via `lib/observability/langsmith.ts` when `LANGCHAIN_TRACING_V2` + `LANGCHAIN_API_KEY` are set.
 
 ## Source Of Truth
 

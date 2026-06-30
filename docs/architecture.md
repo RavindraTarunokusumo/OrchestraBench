@@ -17,18 +17,20 @@ User submits run (SSE) / rerun (server action)
   -> route pages read the file store and render results
 ```
 
-The runner is synchronous. The live New Run page streams workflow events over SSE (`app/api/runs/stream/route.ts`); dataset reruns use the `rerunDatasetAction` server action. Inngest is the intended future background boundary, not yet wired.
+The runner is synchronous. Per-task runs stream workflow events over SSE (`app/api/runs/stream/route.ts`); full-benchmark runs stream batch progress over SSE (`app/api/benchmarks/[slug]/stream/route.ts`). Inngest is the intended future background boundary, not yet wired.
 
 ## App Routes
 
 - `/` home overview (resolve rate, run count).
-- `/runs/new` submits a single repair run and streams the live orchestration canvas.
+- `/dashboard` lists benchmark cards (name, task count, resolve rate) and summarizes runs per workflow (resolve rate, value score, cost, latency) in a comparison table plus interactive charts — a resolve-rate-vs-cost scatter and a value-score leaderboard — all backed by `lib/benchmarks/catalog.ts` and `lib/dashboard/aggregate.ts`.
+- `/benchmarks/[slug]` shows a benchmark's collapsible task list, side panel (buggy code, test, reference fix reveal), and links to run one task or the full suite.
+- `/benchmarks/[slug]/run` configures and executes a full-benchmark run (one workflow across all runnable tasks) with a progress bar and text milestones only — no orchestration canvas.
+- `/runs/new` is per-task only: requires `?taskId=` (optional `&benchmark=` for breadcrumb context); redirects to `/dashboard` when `taskId` is missing. Streams the live orchestration canvas via SSE.
 - `/runs/[id]` shows the execution panel (resolved badge, tests passed, sandbox stdout/stderr, candidate code), evaluation, feedback controls, model-call trace, and static replay.
-- `/dashboard` summarizes runs per workflow (resolve rate, value score, cost, latency) in a comparison table plus interactive charts — a resolve-rate-vs-cost scatter and a value-score leaderboard — all backed by the shared `lib/dashboard/aggregate.ts` aggregator.
-- `/datasets` lists benchmark tasks by source + language with per-task run/resolved counts, and creates manual tasks.
-- `/datasets/[id]` shows a task's buggy code + test (reference fix behind a reveal toggle), reruns workflows when the task has test code, and shows a per-task cross-workflow comparison of its runs.
+- `/datasets` redirects to `/dashboard`.
+- `/datasets/[id]` redirects to `/benchmarks/[slug]?task=[id]`.
 - `/workflows` static guide page: a card per workflow with a cost/quality tag, repair-framed description, the workflow graph (OrchestrationCanvas in static mode), and a text "Flow:" role sequence.
-- `/api/runs/stream` SSE run endpoint. `/api/export` returns the file-store payload as JSON; `/api/export/csv` returns runs as a downloadable CSV (`lib/export/runs-csv.ts`).
+- `/api/runs/stream` SSE endpoint for a single repair run. `/api/benchmarks/[slug]/stream` SSE endpoint for a full-benchmark batch run. `/api/export` returns the file-store payload as JSON; `/api/export/csv` returns runs as a downloadable CSV (`lib/export/runs-csv.ts`).
 
 ## Core Modules
 
@@ -38,7 +40,10 @@ The runner is synchronous. The live New Run page streams workflow events over SS
 - `lib/execution/executor.ts` — `SandboxExecutor` port; `e2b.ts` runs pytest in an E2B sandbox; `mock-executor.ts` returns scripted results for tests; `provider.ts` selects the backend.
 - `lib/evaluation/score-execution.ts` — resolve + partial-credit + resolve-weighted value scoring.
 - `lib/dashboard/aggregate.ts` — `summarizeByWorkflow` / `chartableSummaries`: pure per-workflow aggregation (resolve rate, value, cost, latency, test pass rate) shared by the dashboard table/charts and the dataset-detail per-task comparison; defensive against legacy runs with missing evaluation fields.
+- `lib/benchmarks/catalog.ts` — derives `Benchmark` groupings from `BenchmarkTask.source` (slug, stats, task lookup).
+- `lib/benchmarks/run-batch.ts` — sequential full-benchmark execution; stamps `batchId` on persisted runs.
 - `lib/benchmarks/adapter.ts` + `quixbugs.ts` — `BenchmarkAdapter` port and the QuixBugs adapter; `scripts/ingest-benchmark.ts` vendors and ingests tasks.
+- `lib/observability/langsmith.ts` — optional LangSmith run trees for workflow, model-call, and batch spans (no-op when env unset).
 - `lib/store/file-store.ts` — local persistence, run creation/resolution, feedback, dataset CRUD, reruns, benchmark upsert, export.
 - `lib/providers/*` — provider interface, mock provider, and OpenRouter provider.
 
