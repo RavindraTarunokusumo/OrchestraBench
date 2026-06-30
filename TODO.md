@@ -8,17 +8,18 @@ Spec: `docs/superpowers/specs/2026-06-30-benchmark-ux-langsmith-design.md` (appr
 Branch: `feat/benchmark-ux-redesign` · worktree `.worktree/benchmark-ux-redesign`
 Handoff: native subagents (Task tool), orchestrator full-suite gate per commit.
 
-- [ ] **Task 1** — Benchmark catalog (`lib/benchmarks/catalog.ts`, tests)
-- [ ] **Task 2** — RunConfig extension (types, contracts, runner, providers)
-- [ ] **Task 3** — LangSmith wrappers (`lib/observability/langsmith.ts`)
-- [ ] **Task 4** — Batch runner + SSE API (`lib/benchmarks/run-batch.ts`, route)
-- [ ] **Task 5** — Shared `RunConfigForm` component
-- [ ] **Task 6** — Benchmark run page (progress bar UI)
-- [ ] **Task 7** — Benchmark detail page (collapsible tasks + side panel)
-- [ ] **Task 8** — Dashboard benchmark cards
-- [ ] **Task 9** — `/runs/new` per-task only (query pre-fill, redirect)
-- [ ] **Task 10** — Nav + redirects + cleanup old rerun UI
-- [ ] **Task 11** — Docs + `.env.example`
+- [x] **Task 1** — Benchmark catalog (`ff417d8`)
+- [x] **Task 2** — RunConfig extension (`6c3cbda`)
+- [x] **Task 3** — LangSmith wrappers (`2ce59e7`)
+- [x] **Task 4** — Batch runner + SSE API (`c177682`)
+- [x] **Task 5** — Shared `RunConfigForm` component (`18faf2e`)
+- [x] **Task 6** — Benchmark run page (progress bar UI) (`18faf2e`)
+- [x] **Task 7** — Benchmark detail page (`18faf2e`)
+- [x] **Task 8** — Dashboard benchmark cards (`18faf2e`)
+- [x] **Task 9** — `/runs/new` per-task only (`18faf2e`)
+- [x] **Task 10** — Nav + redirects (`18faf2e`)
+- [x] **Task 11** — Docs + `.env.example` (`01cbb31`)
+- [ ] **PR** — Submit PR, subagent code review, address findings
 
 ### Deferred (unchanged)
 
