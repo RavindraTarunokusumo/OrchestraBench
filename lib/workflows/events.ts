@@ -38,3 +38,9 @@ export type WorkflowEvent =
   | { type: "run-error"; message: string };
 
 export type WorkflowEventHandler = (event: WorkflowEvent) => void;
+
+import type { BatchEvent } from "@/lib/benchmarks/batch-events";
+
+export type { BatchEvent, BenchmarkEventHandler } from "@/lib/benchmarks/batch-events";
+
+export type SseEvent = WorkflowEvent | BatchEvent;

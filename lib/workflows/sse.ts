@@ -1,9 +1,9 @@
-import type { WorkflowEvent } from "@/lib/workflows/events";
+import type { SseEvent, WorkflowEvent } from "@/lib/workflows/events";
 
 const SSE_DATA_PREFIX = "data: ";
 const SSE_DELIMITER = "\n\n";
 
-export function encodeSseEvent(event: WorkflowEvent): string {
+export function encodeSseEvent(event: SseEvent): string {
   return `${SSE_DATA_PREFIX}${JSON.stringify(event)}${SSE_DELIMITER}`;
 }
 
