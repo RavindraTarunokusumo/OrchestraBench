@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  benchmarkRunSchema,
   createRunSchema,
   formatZodErrors,
   parseDatasetCreateRequest,
@@ -158,5 +159,70 @@ describe("createRunSchema repair fields", () => {
         "Provide testCode or a benchmarkTaskId to evaluate the repair."
       );
     }
+  });
+
+  it("accepts optional run configuration fields", () => {
+    const input = parseRunCreateRequest({
+      ...repairBase,
+      testCode: "assert gcd(4, 2) == 2",
+      maxOutputTokens: 512,
+      cheapModel: "custom/cheap-model",
+      strongModel: "custom/strong-model"
+    });
+    expect(input.maxOutputTokens).toBe(512);
+    expect(input.cheapModel).toBe("custom/cheap-model");
+    expect(input.strongModel).toBe("custom/strong-model");
+  });
+
+  it("rejects invalid maxOutputTokens values", () => {
+    expect(() =>
+      parseRunCreateRequest({
+        ...repairBase,
+        testCode: "assert gcd(4, 2) == 2",
+        maxOutputTokens: 0
+      })
+    ).toThrow();
+    expect(() =>
+      parseRunCreateRequest({
+        ...repairBase,
+        testCode: "assert gcd(4, 2) == 2",
+        maxOutputTokens: 1.5
+      })
+    ).toThrow();
+  });
+});
+
+describe("benchmarkRunSchema", () => {
+  it("accepts a minimal benchmark run configuration", () => {
+    expect(benchmarkRunSchema.parse({ workflow: "cheap_first" })).toEqual({
+      workflow: "cheap_first"
+    });
+  });
+
+  it("accepts optional model and token fields", () => {
+    expect(
+      benchmarkRunSchema.parse({
+        workflow: "panel_judge",
+        costLimitUsd: 0.25,
+        maxOutputTokens: 1024,
+        cheapModel: "custom/cheap",
+        strongModel: "custom/strong"
+      })
+    ).toEqual({
+      workflow: "panel_judge",
+      costLimitUsd: 0.25,
+      maxOutputTokens: 1024,
+      cheapModel: "custom/cheap",
+      strongModel: "custom/strong"
+    });
+  });
+
+  it("rejects empty model strings", () => {
+    expect(() =>
+      benchmarkRunSchema.parse({
+        workflow: "single_cheap",
+        cheapModel: "   "
+      })
+    ).toThrow();
   });
 });

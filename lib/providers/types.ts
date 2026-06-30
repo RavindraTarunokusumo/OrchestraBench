@@ -5,6 +5,7 @@ export type ModelRequest = {
   model: string;
   prompt: string;
   temperature?: number;
+  maxOutputTokens?: number;
 };
 
 export type ModelResponse = {
