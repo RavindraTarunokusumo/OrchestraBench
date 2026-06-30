@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { chartableSummaries, summarizeByWorkflow } from "@/lib/dashboard/aggregate";
-import { listRuns } from "@/lib/store/file-store";
+import { listBenchmarks } from "@/lib/benchmarks/catalog";
+import { listDatasets, listRuns } from "@/lib/store/file-store";
 import { formatCostUsd, formatScore } from "@/lib/utils";
 
 export default async function DashboardPage() {
-  const runs = await listRuns();
+  const [runs, tasks] = await Promise.all([listRuns(), listDatasets()]);
+  const benchmarks = listBenchmarks(tasks, runs);
   const summaries = summarizeByWorkflow(runs);
   const totalResolved = runs.filter((run) => run.evaluation?.resolved).length;
   const overallResolveRate = runs.length > 0 ? totalResolved / runs.length : 0;
@@ -22,21 +24,63 @@ export default async function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Comparison dashboard</h1>
           <p className="text-muted-foreground">
-            Rank orchestration workflows by resolve rate, cost, latency, and value score.
+            Browse benchmarks and rank orchestration workflows by resolve rate, cost, latency, and value score.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/runs/new">New run</Link>
-        </Button>
       </div>
+
+      <section id="benchmarks" className="flex flex-col gap-4">
+        <div>
+          <h2 className="text-xl font-semibold tracking-tight">Benchmarks</h2>
+          <p className="text-muted-foreground text-sm">
+            Select a benchmark to inspect tasks or run the full suite.
+          </p>
+        </div>
+
+        {benchmarks.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+              <p className="text-muted-foreground">
+                No benchmarks yet — ingest QuixBugs to get started.
+              </p>
+              <p className="text-muted-foreground font-mono text-sm">npm run ingest:quixbugs</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {benchmarks.map((benchmark) => (
+              <Link key={benchmark.slug} href={`/benchmarks/${benchmark.slug}`} className="group">
+                <Card className="h-full transition-colors group-hover:border-primary">
+                  <CardHeader>
+                    <CardTitle>{benchmark.name}</CardTitle>
+                    <CardDescription>
+                      {benchmark.taskCount} task{benchmark.taskCount === 1 ? "" : "s"}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground">
+                      {(benchmark.resolvedRate * 100).toFixed(0)}% resolved
+                    </span>
+                    <Badge variant="outline">View tasks</Badge>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
 
       {runs.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <p className="text-muted-foreground">No runs yet — start a run to populate the dashboard.</p>
-            <Button asChild>
-              <Link href="/runs/new">New run</Link>
-            </Button>
+            <p className="text-muted-foreground">
+              No runs yet — open a benchmark and run a task to populate workflow comparisons.
+            </p>
+            {benchmarks.length > 0 ? (
+              <Button asChild>
+                <Link href={`/benchmarks/${benchmarks[0]!.slug}`}>Browse benchmarks</Link>
+              </Button>
+            ) : null}
           </CardContent>
         </Card>
       ) : (
@@ -78,7 +122,7 @@ export default async function DashboardPage() {
                 resolveRate: s.resolveRate,
                 avgValue: s.avgValue,
                 avgCost: s.avgCost,
-                count: s.count,
+                count: s.count
               }))}
             />
           </div>
@@ -106,7 +150,9 @@ export default async function DashboardPage() {
                       <TableCell className="font-medium">{row.workflow}</TableCell>
                       <TableCell>{row.count}</TableCell>
                       <TableCell>
-                        {row.count === 0 ? "—" : `${(row.resolveRate * 100).toFixed(0)}% (${row.resolvedCount}/${row.count})`}
+                        {row.count === 0
+                          ? "—"
+                          : `${(row.resolveRate * 100).toFixed(0)}% (${row.resolvedCount}/${row.count})`}
                       </TableCell>
                       <TableCell>{row.count === 0 ? "—" : formatScore(row.avgValue)}</TableCell>
                       <TableCell>{row.count === 0 ? "—" : formatCostUsd(row.avgCost)}</TableCell>
