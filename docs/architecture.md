@@ -5,8 +5,8 @@ OrchestraBench is a small Next.js App Router application for running **code-repa
 ## Runtime Flow
 
 ```text
-User submits run (SSE) / rerun (server action)
-  -> createRunSchema / Zod validates input
+User submits per-task run (SSE) or full-benchmark batch (SSE)
+  -> createRunSchema / benchmarkRunSchema validates input
   -> lib/store/file-store.ts resolveRunInput() fills testCode/entryPoint from the benchmark task
   -> lib/workflows/runner.ts executes the selected workflow (emits corrected code)
   -> lib/providers/provider.ts selects mock or OpenRouter provider

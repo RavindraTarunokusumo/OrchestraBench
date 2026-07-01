@@ -1,27 +1,17 @@
 # TODO.md
 
-Active work only. Archive completed sessions under `docs/iterations/archive/`.
+This file contains active or future work only.
 
-## Session: Benchmark UX + LangSmith (2026-06-30)
+Completed sessions are archived under `docs/iterations/archive/`:
+- `2026-06-30-benchmark-ux-langsmith.md` — Benchmark-centric UX, bulk runs, LangSmith tracing (PR #18, merge `86fc718`).
+- `2026-06-28-autopilot-backlog-run.md` — Autopilot backlog run: cycles 0–10 (PRs #7–#17, final merge `d349fc6` for cycle 10 budgets).
+- `2026-06-27-repair-mode-phase1-e2e-verification.md` — QuixBugs pin fix + live E2B end-to-end proof (PR #6, merge `2d8526d`).
+- `2026-06-27-repair-mode-phase2-dashboard-datasets.md` — dashboard/datasets repair-metrics repurpose (PR #5, merge `c3be558`).
+- `2026-06-27-benchmark-repair-mode-phase1.md` — code-repair pivot (PR #3, merge `f9c80d2`).
+- `earlier-sessions-mvp-and-ui-overhaul.md` — MVP milestones + UI overhaul (PR #2).
 
-Spec: `docs/superpowers/specs/2026-06-30-benchmark-ux-langsmith-design.md` (approved)
-Branch: `feat/benchmark-ux-redesign` · worktree `.worktree/benchmark-ux-redesign`
-Handoff: native subagents (Task tool), orchestrator full-suite gate per commit.
+### Specs only (implementation deferred — external infra / accounts / large design)
 
-- [x] **Task 1** — Benchmark catalog (`ff417d8`)
-- [x] **Task 2** — RunConfig extension (`6c3cbda`)
-- [x] **Task 3** — LangSmith wrappers (`2ce59e7`)
-- [x] **Task 4** — Batch runner + SSE API (`c177682`)
-- [x] **Task 5** — Shared `RunConfigForm` component (`18faf2e`)
-- [x] **Task 6** — Benchmark run page (progress bar UI) (`18faf2e`)
-- [x] **Task 7** — Benchmark detail page (`18faf2e`)
-- [x] **Task 8** — Dashboard benchmark cards (`18faf2e`)
-- [x] **Task 9** — `/runs/new` per-task only (`18faf2e`)
-- [x] **Task 10** — Nav + redirects (`18faf2e`)
-- [x] **Task 11** — Docs + `.env.example` (`01cbb31`)
-- [x] **PR #18** — https://github.com/RavindraTarunokusumo/OrchestraBench/pull/18 (review fixes pushed)
-
-### Deferred (unchanged)
-
-- [ ] A1: Repair mode Phase 3 — heavy adapters
-- [ ] L3: Human feedback UI
+- [ ] A1: Repair mode Phase 3 — heavy adapters (Defects4J / SWE-bench Lite) with repo checkout in the sandbox; Vercel Sandbox executor adapter; multi-language (Java) execution.
+- [ ] L1: Evaluation harness (Braintrust / full LangSmith eval workflows — basic trace export landed in PR #18).
+- [ ] L3: Human feedback UI.
