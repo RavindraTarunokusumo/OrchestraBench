@@ -87,7 +87,7 @@ function reduceBatchEvent(prev: BenchmarkStreamState, event: BatchEvent): Benchm
         taskIndex: event.taskIndex + 1,
         log: appendLog(
           prev.log,
-          `${event.taskId} ${event.resolved ? "resolved ✓" : "unresolved ✗"} · ${event.costUsd.toFixed(4)} USD · ${event.latencyMs} ms`,
+          `${event.taskTitle} ${event.resolved ? "resolved ✓" : "unresolved ✗"} · ${event.costUsd.toFixed(4)} USD · ${event.latencyMs} ms`,
           event.resolved ? "success" : "info"
         )
       };
@@ -95,7 +95,7 @@ function reduceBatchEvent(prev: BenchmarkStreamState, event: BatchEvent): Benchm
       return {
         ...prev,
         taskIndex: event.taskIndex + 1,
-        log: appendLog(prev.log, `Task ${event.taskId} failed: ${event.error}`, "error")
+        log: appendLog(prev.log, `${event.taskTitle} failed: ${event.error}`, "error")
       };
     case "benchmark-final":
       return {

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { NewRunClient } from "@/app/runs/new/new-run-client";
 import { benchmarkNameForSource, benchmarkSlugForSource, getBenchmark } from "@/lib/benchmarks/catalog";
 import { getDataset, listDatasets, listRuns } from "@/lib/store/file-store";
+import { getDefaultCheapModel, getDefaultStrongModel } from "@/lib/workflows/model-defaults";
 
 type PageProps = {
   searchParams: Promise<{ taskId?: string; benchmark?: string }>;
@@ -32,7 +33,15 @@ export default async function NewRunPage({ searchParams }: PageProps) {
           Execute {task.title} with live orchestration visualization on the canvas.
         </p>
       </div>
-      <NewRunClient task={task} benchmarkSlug={benchmarkSlug} benchmarkName={benchmarkName} />
+      <NewRunClient
+        task={task}
+        benchmarkSlug={benchmarkSlug}
+        benchmarkName={benchmarkName}
+        modelDefaults={{
+          cheapModel: getDefaultCheapModel(),
+          strongModel: getDefaultStrongModel()
+        }}
+      />
     </main>
   );
 }

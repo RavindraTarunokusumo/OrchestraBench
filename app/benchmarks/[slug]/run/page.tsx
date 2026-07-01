@@ -4,6 +4,7 @@ import { BenchmarkRunClient } from "@/components/benchmarks/benchmark-run-client
 import { Button } from "@/components/ui/button";
 import { getBenchmark, tasksForBenchmark } from "@/lib/benchmarks/catalog";
 import { listDatasets, listRuns } from "@/lib/store/file-store";
+import { getDefaultCheapModel, getDefaultStrongModel } from "@/lib/workflows/model-defaults";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -44,6 +45,10 @@ export default async function BenchmarkRunPage({ params }: PageProps) {
         benchmarkName={benchmark.name}
         runnableTaskCount={runnableTasks.length}
         totalTaskCount={benchmarkTasks.length}
+        modelDefaults={{
+          cheapModel: getDefaultCheapModel(),
+          strongModel: getDefaultStrongModel()
+        }}
       />
     </main>
   );

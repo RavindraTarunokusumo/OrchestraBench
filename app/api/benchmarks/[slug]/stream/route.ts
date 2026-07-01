@@ -1,6 +1,6 @@
 import { benchmarkRunSchema, formatZodErrors } from "@/lib/api/contracts";
-import { getBenchmark } from "@/lib/benchmarks/catalog";
-import { runBenchmarkBatch } from "@/lib/benchmarks/run-batch";
+import { getBenchmark, tasksForBenchmark } from "@/lib/benchmarks/catalog";
+import { isRunnableTask, runBenchmarkBatch } from "@/lib/benchmarks/run-batch";
 import type { BatchEvent } from "@/lib/benchmarks/batch-events";
 import { createConfiguredExecutor } from "@/lib/execution/provider";
 import { createConfiguredProvider } from "@/lib/providers/provider";
@@ -31,6 +31,11 @@ export async function POST(request: Request, context: RouteContext) {
   const parsed = benchmarkRunSchema.safeParse(body.data);
   if (!parsed.success) {
     return jsonError(400, "Invalid benchmark run request.", formatZodErrors(parsed.error));
+  }
+
+  const runnableCount = tasksForBenchmark(slug, tasks).filter(isRunnableTask).length;
+  if (runnableCount === 0) {
+    return jsonError(400, "No runnable tasks in this benchmark.");
   }
 
   const encoder = new TextEncoder();

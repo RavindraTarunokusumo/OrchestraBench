@@ -1,4 +1,4 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { benchmarkSlugForSource } from "@/lib/benchmarks/catalog";
 import { getDataset } from "@/lib/store/file-store";
 
@@ -15,5 +15,5 @@ export default async function DatasetDetailRedirectPage({ params }: PageProps) {
   }
 
   const slug = benchmarkSlugForSource(task.source);
-  redirect(`/benchmarks/${slug}?task=${task.id}`);
+  permanentRedirect(`/benchmarks/${slug}?task=${task.id}`);
 }

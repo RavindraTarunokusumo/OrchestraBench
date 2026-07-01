@@ -6,8 +6,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { workflowKinds, type RunConfig, type WorkflowKind } from "@/lib/domain/types";
 import { workflowLabels } from "@/lib/workflows/labels";
 
-export const DEFAULT_CHEAP_MODEL = "cohere/north-mini-code:free";
-export const DEFAULT_STRONG_MODEL = "cohere/north-mini-code:free";
+export type ModelDefaults = {
+  cheapModel: string;
+  strongModel: string;
+};
 
 export type RunConfigFormValues = {
   workflow: WorkflowKind;
@@ -17,19 +19,24 @@ export type RunConfigFormValues = {
   costLimitUsd: string;
 };
 
-export const defaultRunConfigFormValues: RunConfigFormValues = {
-  workflow: "cheap_first",
-  cheapModel: DEFAULT_CHEAP_MODEL,
-  strongModel: DEFAULT_STRONG_MODEL,
-  maxOutputTokens: "",
-  costLimitUsd: ""
-};
+export function defaultRunConfigFormValues(defaults: ModelDefaults): RunConfigFormValues {
+  return {
+    workflow: "cheap_first",
+    cheapModel: defaults.cheapModel,
+    strongModel: defaults.strongModel,
+    maxOutputTokens: "",
+    costLimitUsd: ""
+  };
+}
 
 export type RunConfigValidationResult =
   | { ok: true; config: RunConfig }
   | { ok: false; error: string };
 
-export function validateRunConfigForm(values: RunConfigFormValues): RunConfigValidationResult {
+export function validateRunConfigForm(
+  values: RunConfigFormValues,
+  defaults: ModelDefaults
+): RunConfigValidationResult {
   const parsedCostLimit =
     values.costLimitUsd.trim() === "" ? undefined : Number(values.costLimitUsd);
   if (parsedCostLimit !== undefined && (!Number.isFinite(parsedCostLimit) || parsedCostLimit <= 0)) {
@@ -54,20 +61,24 @@ export function validateRunConfigForm(values: RunConfigFormValues): RunConfigVal
     return { ok: false, error: "Strong model is required." };
   }
 
-  return {
-    ok: true,
-    config: {
-      workflow: values.workflow,
-      costLimitUsd: parsedCostLimit,
-      maxOutputTokens: parsedMaxTokens,
-      cheapModel,
-      strongModel
-    }
+  const config: RunConfig = {
+    workflow: values.workflow,
+    costLimitUsd: parsedCostLimit,
+    maxOutputTokens: parsedMaxTokens
   };
+  if (cheapModel !== defaults.cheapModel) {
+    config.cheapModel = cheapModel;
+  }
+  if (strongModel !== defaults.strongModel) {
+    config.strongModel = strongModel;
+  }
+
+  return { ok: true, config };
 }
 
 type RunConfigFormProps = {
   values: RunConfigFormValues;
+  modelDefaults: ModelDefaults;
   onChange: (values: RunConfigFormValues) => void;
   disabled?: boolean;
   showMockHint?: boolean;
@@ -76,6 +87,7 @@ type RunConfigFormProps = {
 
 export function RunConfigForm({
   values,
+  modelDefaults,
   onChange,
   disabled = false,
   showMockHint = true,
@@ -114,7 +126,7 @@ export function RunConfigForm({
           value={values.cheapModel}
           disabled={disabled}
           onChange={(event) => update("cheapModel", event.target.value)}
-          placeholder={DEFAULT_CHEAP_MODEL}
+          placeholder={modelDefaults.cheapModel}
           className="font-mono text-sm"
         />
       </div>
@@ -126,7 +138,7 @@ export function RunConfigForm({
           value={values.strongModel}
           disabled={disabled}
           onChange={(event) => update("strongModel", event.target.value)}
-          placeholder={DEFAULT_STRONG_MODEL}
+          placeholder={modelDefaults.strongModel}
           className="font-mono text-sm"
         />
       </div>

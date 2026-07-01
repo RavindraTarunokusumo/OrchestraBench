@@ -16,8 +16,10 @@ import { extractCode } from "@/lib/workflows/extract-code";
 import { buildWorkflowGraph } from "@/lib/workflows/graph";
 import type { WorkflowEventHandler } from "@/lib/workflows/events";
 
-const CHEAP_MODEL = "cohere/north-mini-code:free";
-const STRONG_MODEL = process.env.OPENROUTER_STRONG_MODEL || "cohere/north-mini-code:free";
+import { getDefaultCheapModel, getDefaultStrongModel } from "@/lib/workflows/model-defaults";
+
+const CHEAP_MODEL = getDefaultCheapModel();
+const STRONG_MODEL = getDefaultStrongModel();
 const ESCALATION_CONFIDENCE_THRESHOLD = 0.6;
 const RESPONSE_PREVIEW_LENGTH = 200;
 
@@ -33,11 +35,18 @@ const FAILED_EXECUTION: ExecutionResult = {
   backend: "mock"
 };
 
+export type WorkflowTraceContext = {
+  benchmarkSlug?: string;
+  batchId?: string;
+  batchIndex?: number;
+};
+
 type RunWorkflowArgs = {
   input: RunInput;
   provider: ModelProvider;
   executor: SandboxExecutor;
   onEvent?: WorkflowEventHandler;
+  trace?: WorkflowTraceContext;
 };
 
 type CallState = {
@@ -51,12 +60,16 @@ export async function runWorkflow({
   input,
   provider,
   executor,
-  onEvent
+  onEvent,
+  trace
 }: RunWorkflowArgs): Promise<RunResult> {
   return traceWorkflowRun(
     {
       workflow: input.workflow,
-      benchmarkTaskId: input.benchmarkTaskId
+      benchmarkTaskId: input.benchmarkTaskId,
+      benchmarkSlug: trace?.benchmarkSlug,
+      batchId: trace?.batchId,
+      batchIndex: trace?.batchIndex
     },
     (parentRun) => runWorkflowBody({ input, provider, executor, onEvent, parentRun })
   );

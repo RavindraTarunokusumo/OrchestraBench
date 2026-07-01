@@ -7,6 +7,7 @@ import {
   defaultRunConfigFormValues,
   RunConfigForm,
   validateRunConfigForm,
+  type ModelDefaults,
   type RunConfigFormValues
 } from "@/components/runs/run-config-form";
 import { Button } from "@/components/ui/button";
@@ -20,15 +21,19 @@ type BenchmarkRunClientProps = {
   benchmarkName: string;
   runnableTaskCount: number;
   totalTaskCount: number;
+  modelDefaults: ModelDefaults;
 };
 
 export function BenchmarkRunClient({
   slug,
   benchmarkName,
   runnableTaskCount,
-  totalTaskCount
+  totalTaskCount,
+  modelDefaults
 }: BenchmarkRunClientProps) {
-  const [formValues, setFormValues] = useState<RunConfigFormValues>(defaultRunConfigFormValues);
+  const [formValues, setFormValues] = useState<RunConfigFormValues>(() =>
+    defaultRunConfigFormValues(modelDefaults)
+  );
   const [validationError, setValidationError] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
 
@@ -46,7 +51,7 @@ export function BenchmarkRunClient({
       return;
     }
 
-    const result = validateRunConfigForm(formValues);
+    const result = validateRunConfigForm(formValues, modelDefaults);
     if (!result.ok) {
       setValidationError(result.error);
       return;
@@ -99,7 +104,12 @@ export function BenchmarkRunClient({
               <CardDescription>One workflow runs across every task in sequence.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
-              <RunConfigForm values={formValues} onChange={setFormValues} idPrefix="benchmark-run" />
+              <RunConfigForm
+                values={formValues}
+                modelDefaults={modelDefaults}
+                onChange={setFormValues}
+                idPrefix="benchmark-run"
+              />
               {validationError ? <p className="text-sm text-destructive">{validationError}</p> : null}
               <Button type="submit" disabled={runnableTaskCount === 0}>
                 Run entire benchmark

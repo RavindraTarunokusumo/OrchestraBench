@@ -8,6 +8,7 @@ import {
   defaultRunConfigFormValues,
   RunConfigForm,
   validateRunConfigForm,
+  type ModelDefaults,
   type RunConfigFormValues
 } from "@/components/runs/run-config-form";
 import { Badge } from "@/components/ui/badge";
@@ -21,10 +22,13 @@ type NewRunClientProps = {
   task: BenchmarkTask;
   benchmarkSlug: string;
   benchmarkName: string;
+  modelDefaults: ModelDefaults;
 };
 
-export function NewRunClient({ task, benchmarkSlug, benchmarkName }: NewRunClientProps) {
-  const [formValues, setFormValues] = useState<RunConfigFormValues>(defaultRunConfigFormValues);
+export function NewRunClient({ task, benchmarkSlug, benchmarkName, modelDefaults }: NewRunClientProps) {
+  const [formValues, setFormValues] = useState<RunConfigFormValues>(() =>
+    defaultRunConfigFormValues(modelDefaults)
+  );
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const { status, graph, nodeStates, totals, escalation, finalRunId, finalSummary, executionResult, error, start } =
@@ -35,7 +39,7 @@ export function NewRunClient({ task, benchmarkSlug, benchmarkName }: NewRunClien
 
   function handleSubmit(formEvent: React.FormEvent) {
     formEvent.preventDefault();
-    const configResult = validateRunConfigForm(formValues);
+    const configResult = validateRunConfigForm(formValues, modelDefaults);
     if (!configResult.ok) {
       setValidationError(configResult.error);
       return;
@@ -55,7 +59,7 @@ export function NewRunClient({ task, benchmarkSlug, benchmarkName }: NewRunClien
 
   function handleRunAgain() {
     setValidationError(null);
-    const configResult = validateRunConfigForm(formValues);
+    const configResult = validateRunConfigForm(formValues, modelDefaults);
     if (!configResult.ok) {
       setValidationError(configResult.error);
       return;
@@ -209,6 +213,7 @@ export function NewRunClient({ task, benchmarkSlug, benchmarkName }: NewRunClien
           <CardContent className="flex flex-col gap-4">
             <RunConfigForm
               values={formValues}
+              modelDefaults={modelDefaults}
               onChange={setFormValues}
               disabled={isRunning}
               idPrefix="task-run"

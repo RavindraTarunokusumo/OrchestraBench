@@ -23,6 +23,7 @@ export type TaskFinalEvent = {
   batchId: string;
   taskIndex: number;
   taskId: string;
+  taskTitle: string;
   runId: string;
   resolved: boolean;
   costUsd: number;
@@ -34,6 +35,7 @@ export type TaskErrorEvent = {
   batchId: string;
   taskIndex: number;
   taskId: string;
+  taskTitle: string;
   error: string;
 };
 
