@@ -19,7 +19,7 @@ Handoff: native subagents (Task tool), orchestrator full-suite gate per commit.
 - [x] **Task 9** — `/runs/new` per-task only (`18faf2e`)
 - [x] **Task 10** — Nav + redirects (`18faf2e`)
 - [x] **Task 11** — Docs + `.env.example` (`01cbb31`)
-- [ ] **PR** — Submit PR, subagent code review, address findings
+- [x] **PR #18** — https://github.com/RavindraTarunokusumo/OrchestraBench/pull/18 (review fixes pushed)
 
 ### Deferred (unchanged)
 
