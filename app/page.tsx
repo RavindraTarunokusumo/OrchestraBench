@@ -48,13 +48,13 @@ export default async function HomePage() {
         </div>
         <div className="flex flex-wrap items-center gap-3 sm:justify-start">
           <Button asChild size="lg">
-            <Link href="/runs/new">New run</Link>
-          </Button>
-          <Button asChild variant="outline" size="lg">
             <Link href="/dashboard">Dashboard</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link href="/datasets">Datasets</Link>
+            <Link href="/dashboard#benchmarks">Browse benchmarks</Link>
+          </Button>
+          <Button asChild variant="outline" size="lg">
+            <Link href="/workflows">Workflows</Link>
           </Button>
         </div>
       </section>
@@ -101,9 +101,9 @@ export default async function HomePage() {
         {recentRuns.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-              <p className="text-muted-foreground">No runs yet — start your first run.</p>
+              <p className="text-muted-foreground">No runs yet — open a benchmark and run a task.</p>
               <Button asChild>
-                <Link href="/runs/new">New run</Link>
+                <Link href="/dashboard#benchmarks">Browse benchmarks</Link>
               </Button>
             </CardContent>
           </Card>

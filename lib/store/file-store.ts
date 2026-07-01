@@ -82,12 +82,14 @@ export async function getRun(id: string): Promise<RunResult | undefined> {
   return data.runs.find((run) => run.id === id);
 }
 
-export async function createRun(input: RunInput): Promise<RunResult> {
+export type RunBatchFields = Pick<RunResult, "batchId" | "batchIndex" | "batchTotal">;
+
+export async function createRun(input: RunInput, batchFields?: RunBatchFields): Promise<RunResult> {
   const provider = createConfiguredProvider();
   const executor = createConfiguredExecutor();
   const resolved = await resolveRunInput(input);
   const result = await runWorkflow({ input: resolved, provider, executor });
-  return saveRun(result);
+  return saveRun(result, batchFields);
 }
 
 export async function resolveRunInput(input: RunInput): Promise<RunInput> {
@@ -106,11 +108,12 @@ export async function resolveRunInput(input: RunInput): Promise<RunInput> {
   };
 }
 
-export async function saveRun(result: RunResult): Promise<RunResult> {
+export async function saveRun(result: RunResult, batchFields?: RunBatchFields): Promise<RunResult> {
+  const toSave: RunResult = batchFields ? { ...result, ...batchFields } : result;
   await mutateData((data) => {
-    data.runs.unshift(result);
+    data.runs.unshift(toSave);
   });
-  return result;
+  return toSave;
 }
 
 export async function updateRunEvaluation(

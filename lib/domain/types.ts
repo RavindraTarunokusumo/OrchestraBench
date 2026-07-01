@@ -73,6 +73,14 @@ export type ModelCallTrace = {
   nodeId?: string;
 };
 
+export type RunConfig = {
+  workflow: WorkflowKind;
+  costLimitUsd?: number;
+  maxOutputTokens?: number;
+  cheapModel?: string;
+  strongModel?: string;
+};
+
 export type RunInput = {
   title: string;
   language: string;
@@ -80,6 +88,9 @@ export type RunInput = {
   code: string;
   workflow: WorkflowKind;
   costLimitUsd?: number;
+  maxOutputTokens?: number;
+  cheapModel?: string;
+  strongModel?: string;
   benchmarkTaskId?: string;
   testCode?: string;
   entryPoint?: string;
@@ -108,6 +119,9 @@ export type RunResult = {
   failureNotes?: string;
   benchmarkTaskId?: string;
   knownBugs?: KnownBug[];
+  batchId?: string;
+  batchIndex?: number;
+  batchTotal?: number;
 };
 
 export type BenchmarkTask = {

@@ -37,7 +37,8 @@ export function createOpenRouterProvider(): ModelProvider {
               content: request.prompt
             }
           ],
-          temperature: request.temperature ?? 0.2
+          temperature: request.temperature ?? 0.2,
+          ...(request.maxOutputTokens !== undefined ? { max_tokens: request.maxOutputTokens } : {})
         })
       });
 

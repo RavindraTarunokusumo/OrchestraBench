@@ -13,6 +13,19 @@ Copy-Item .env.example .env.local
 
 `E2B_API_KEY` is optional. Without it, the app uses the mock sandbox executor for code-repair runs. Set it to run candidate fixes against real tests in an E2B cloud sandbox. Get a key at [e2b.dev](https://e2b.dev).
 
+### LangSmith tracing (optional)
+
+Tracing is a no-op unless both `LANGCHAIN_TRACING_V2=true` and `LANGCHAIN_API_KEY` are set. When enabled, workflow runs, model calls, and full-benchmark batches emit nested spans to LangSmith.
+
+```powershell
+# In .env.local
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=lsv2_pt_...
+LANGCHAIN_PROJECT=orchestrabench   # optional; defaults to orchestrabench
+```
+
+Get an API key at [smith.langchain.com](https://smith.langchain.com). Runs proceed normally if LangSmith is unavailable (a one-time server warning is logged).
+
 ## Development
 
 ```powershell
@@ -61,7 +74,7 @@ npm start
 
 ## Benchmark Ingestion
 
-Vendor and ingest QuixBugs repair tasks into the local store (clones a pinned commit into `.benchmarks/`, then upserts a curated subset):
+Vendor and ingest QuixBugs repair tasks into the local store (clones a pinned commit into `.benchmarks/`, then upserts a curated subset). Ingested tasks appear as the **QuixBugs** benchmark on the dashboard (`/dashboard#benchmarks`).
 
 ```powershell
 npm run ingest:quixbugs

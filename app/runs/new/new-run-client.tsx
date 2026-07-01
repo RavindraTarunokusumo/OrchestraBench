@@ -4,35 +4,31 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRunStream } from "@/components/orchestration/use-run-stream";
 import { OrchestrationCanvas } from "@/components/orchestration/canvas";
+import {
+  defaultRunConfigFormValues,
+  RunConfigForm,
+  validateRunConfigForm,
+  type ModelDefaults,
+  type RunConfigFormValues
+} from "@/components/runs/run-config-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { workflowKinds, type WorkflowKind } from "@/lib/domain/types";
+import type { BenchmarkTask } from "@/lib/domain/types";
 import { workflowLabels } from "@/lib/workflows/labels";
 import { formatCostUsd, formatScore } from "@/lib/utils";
 
-const DEFAULTS = {
-  title: "gcd repair",
-  language: "python",
-  prompt: "Fix the bug in this function so all tests pass. Return only the corrected code in a single code block.",
-  code: "def gcd(a, b):\n    if b == 0:\n        return a\n    else:\n        return gcd(a % b, b)",
-  testCode: "assert gcd(4, 2) == 2\nassert gcd(35, 21) == 7",
-  workflow: "cheap_first" as WorkflowKind,
-  costLimitUsd: ""
+type NewRunClientProps = {
+  task: BenchmarkTask;
+  benchmarkSlug: string;
+  benchmarkName: string;
+  modelDefaults: ModelDefaults;
 };
 
-export function NewRunClient() {
-  const [title, setTitle] = useState(DEFAULTS.title);
-  const [language, setLanguage] = useState(DEFAULTS.language);
-  const [prompt, setPrompt] = useState(DEFAULTS.prompt);
-  const [code, setCode] = useState(DEFAULTS.code);
-  const [testCode, setTestCode] = useState(DEFAULTS.testCode);
-  const [workflow, setWorkflow] = useState<WorkflowKind>(DEFAULTS.workflow);
-  const [costLimitUsd, setCostLimitUsd] = useState(DEFAULTS.costLimitUsd);
+export function NewRunClient({ task, benchmarkSlug, benchmarkName, modelDefaults }: NewRunClientProps) {
+  const [formValues, setFormValues] = useState<RunConfigFormValues>(() =>
+    defaultRunConfigFormValues(modelDefaults)
+  );
   const [validationError, setValidationError] = useState<string | null>(null);
 
   const { status, graph, nodeStates, totals, escalation, finalRunId, finalSummary, executionResult, error, start } =
@@ -43,40 +39,40 @@ export function NewRunClient() {
 
   function handleSubmit(formEvent: React.FormEvent) {
     formEvent.preventDefault();
-    if (!title.trim() || !language.trim() || !prompt.trim() || !code.trim()) {
-      setValidationError("Title, language, prompt, and code are all required.");
-      return;
-    }
-    if (!testCode.trim()) {
-      setValidationError("Test code is required for ad-hoc runs.");
-      return;
-    }
-    const parsedCostLimit = costLimitUsd.trim() === "" ? undefined : Number(costLimitUsd);
-    if (parsedCostLimit !== undefined && (!Number.isFinite(parsedCostLimit) || parsedCostLimit <= 0)) {
-      setValidationError("Cost limit must be a positive number.");
+    const configResult = validateRunConfigForm(formValues, modelDefaults);
+    if (!configResult.ok) {
+      setValidationError(configResult.error);
       return;
     }
     setValidationError(null);
     start({
-      title: title.trim(),
-      language: language.trim(),
-      prompt: prompt.trim(),
-      code: code.trim(),
-      testCode: testCode.trim(),
-      workflow,
-      costLimitUsd: parsedCostLimit
+      title: task.title,
+      language: task.language,
+      prompt: task.prompt,
+      code: task.code,
+      testCode: task.testCode,
+      entryPoint: task.entryPoint,
+      benchmarkTaskId: task.id,
+      ...configResult.config
     });
   }
 
-  function handleRunAnother() {
+  function handleRunAgain() {
     setValidationError(null);
+    const configResult = validateRunConfigForm(formValues, modelDefaults);
+    if (!configResult.ok) {
+      setValidationError(configResult.error);
+      return;
+    }
     start({
-      title: DEFAULTS.title,
-      language: DEFAULTS.language,
-      prompt: DEFAULTS.prompt,
-      code: DEFAULTS.code,
-      testCode: DEFAULTS.testCode,
-      workflow: DEFAULTS.workflow
+      title: task.title,
+      language: task.language,
+      prompt: task.prompt,
+      code: task.code,
+      testCode: task.testCode,
+      entryPoint: task.entryPoint,
+      benchmarkTaskId: task.id,
+      ...configResult.config
     });
   }
 
@@ -86,6 +82,14 @@ export function NewRunClient() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
+        <Link href={`/benchmarks/${benchmarkSlug}`} className="hover:text-foreground font-medium hover:underline">
+          {benchmarkName}
+        </Link>
+        <span>/</span>
+        <span className="text-foreground font-medium">{task.title}</span>
+      </div>
+
       {status === "error" && error && (
         <Card className="border-destructive">
           <CardHeader>
@@ -93,7 +97,7 @@ export function NewRunClient() {
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
-            Adjust the form below and submit again to retry.
+            Adjust the configuration below and submit again to retry.
           </CardContent>
         </Card>
       )}
@@ -102,7 +106,7 @@ export function NewRunClient() {
         <Card>
           <CardHeader>
             <CardTitle>Orchestration in progress</CardTitle>
-            <CardDescription>Workflow: {workflowLabels[workflow]}</CardDescription>
+            <CardDescription>Workflow: {workflowLabels[formValues.workflow]}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <OrchestrationCanvas
@@ -141,7 +145,7 @@ export function NewRunClient() {
                   <div>
                     <h3 className="mb-2 text-sm font-medium">Buggy code</h3>
                     <pre className="bg-muted overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
-                      {code}
+                      {task.code}
                     </pre>
                   </div>
                   <div>
@@ -161,8 +165,11 @@ export function NewRunClient() {
                     <Link href={`/runs/${finalRunId}`}>View full report</Link>
                   </Button>
                 )}
-                <Button variant="outline" type="button" onClick={handleRunAnother}>
-                  Run another
+                <Button variant="outline" type="button" onClick={handleRunAgain}>
+                  Run again
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href={`/benchmarks/${benchmarkSlug}?task=${task.id}`}>Back to task</Link>
                 </Button>
               </div>
             )}
@@ -173,121 +180,50 @@ export function NewRunClient() {
       <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-2">
         <Card className={isRunning ? "opacity-60" : undefined}>
           <CardHeader>
-            <CardTitle>Task details</CardTitle>
-            <CardDescription>Provide the buggy code and repair instructions.</CardDescription>
+            <CardTitle>{task.title}</CardTitle>
+            <CardDescription>
+              {task.language} · {task.source}
+              {task.tags.length > 0 ? ` · ${task.tags.join(", ")}` : ""}
+            </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
+            <p className="text-sm">{task.prompt}</p>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="title">Task title</Label>
-              <Input
-                id="title"
-                value={title}
-                disabled={isRunning}
-                onChange={(changeEvent) => setTitle(changeEvent.target.value)}
-                required
-              />
+              <h3 className="text-sm font-medium">Buggy code</h3>
+              <pre className="bg-muted max-h-64 overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
+                {task.code}
+              </pre>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="prompt">Repair instructions</Label>
-              <Textarea
-                id="prompt"
-                value={prompt}
-                disabled={isRunning}
-                onChange={(changeEvent) => setPrompt(changeEvent.target.value)}
-                rows={4}
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="code">Buggy code</Label>
-              <Textarea
-                id="code"
-                value={code}
-                disabled={isRunning}
-                onChange={(changeEvent) => setCode(changeEvent.target.value)}
-                rows={8}
-                className="font-mono"
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="testCode">Test code</Label>
-              <Textarea
-                id="testCode"
-                value={testCode}
-                disabled={isRunning}
-                onChange={(changeEvent) => setTestCode(changeEvent.target.value)}
-                rows={4}
-                className="font-mono"
-                placeholder="assert gcd(4, 2) == 2"
-                required
-              />
-              <p className="text-muted-foreground text-xs">
-                Required for ad-hoc runs. Benchmark tasks supply test code server-side when selected.
-              </p>
-            </div>
+            {task.testCode ? (
+              <div className="flex flex-col gap-2">
+                <h3 className="text-sm font-medium">Tests</h3>
+                <pre className="bg-muted max-h-32 overflow-auto rounded-md p-3 font-mono text-xs whitespace-pre-wrap">
+                  {task.testCode}
+                </pre>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
 
         <Card className={isRunning ? "opacity-60" : undefined}>
           <CardHeader>
             <CardTitle>Run configuration</CardTitle>
-            <CardDescription>Pick a workflow and optional cost limit.</CardDescription>
+            <CardDescription>Pick a workflow, models, and optional limits for this task.</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="language">Language</Label>
-              <Input
-                id="language"
-                value={language}
-                disabled={isRunning}
-                onChange={(changeEvent) => setLanguage(changeEvent.target.value)}
-                required
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="workflow">Workflow</Label>
-              <Select
-                value={workflow}
-                disabled={isRunning}
-                onValueChange={(value) => setWorkflow(value as WorkflowKind)}
-              >
-                <SelectTrigger id="workflow" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {workflowKinds.map((kind) => (
-                    <SelectItem key={kind} value={kind}>
-                      {workflowLabels[kind]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="costLimitUsd">Cost limit USD (optional)</Label>
-              <Input
-                id="costLimitUsd"
-                type="number"
-                step="0.0001"
-                min="0.0001"
-                placeholder="0.02"
-                value={costLimitUsd}
-                disabled={isRunning}
-                onChange={(changeEvent) => setCostLimitUsd(changeEvent.target.value)}
-              />
-            </div>
+            <RunConfigForm
+              values={formValues}
+              modelDefaults={modelDefaults}
+              onChange={setFormValues}
+              disabled={isRunning}
+              idPrefix="task-run"
+            />
 
             {validationError && <p className="text-sm text-destructive">{validationError}</p>}
 
             <Button type="submit" disabled={isRunning}>
-              {isRunning ? "Running…" : "Run benchmark"}
+              {isRunning ? "Running…" : "Run task"}
             </Button>
-            <p className="text-sm text-muted-foreground">
-              Without <code className="font-mono">OPENROUTER_API_KEY</code>, runs use the deterministic mock
-              provider. With credentials, the default OpenRouter model is{" "}
-              <code className="font-mono">cohere/north-mini-code:free</code>.
-            </p>
           </CardContent>
         </Card>
       </form>

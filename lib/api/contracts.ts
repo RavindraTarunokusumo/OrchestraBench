@@ -9,6 +9,11 @@ const optionalPositiveNumber = z.preprocess(
   (value) => (value === "" || value === null || value === undefined ? undefined : value),
   z.coerce.number().positive().optional()
 );
+const optionalPositiveInt = z.preprocess(
+  (value) => (value === "" || value === null || value === undefined ? undefined : value),
+  z.coerce.number().int().positive().optional()
+);
+const optionalNonEmptyString = z.string().trim().min(1).optional();
 
 // Hard keywords cannot be used as a module name in `from <module> import *`.
 const pythonKeywords = new Set([
@@ -35,6 +40,9 @@ export const createRunSchema = z
     code: z.string().trim().min(1),
     workflow: workflowSchema,
     costLimitUsd: optionalPositiveNumber,
+    maxOutputTokens: optionalPositiveInt,
+    cheapModel: optionalNonEmptyString,
+    strongModel: optionalNonEmptyString,
     benchmarkTaskId: z.string().trim().min(1).optional(),
     testCode: z.string().trim().min(1).optional(),
     entryPoint: pythonIdentifier.optional()
@@ -57,6 +65,14 @@ export const createDatasetSchema = z.object({
 export const rerunDatasetSchema = z.object({
   workflows: z.array(workflowSchema).min(1).optional().default([...workflowKinds]),
   costLimitUsd: optionalPositiveNumber
+});
+
+export const benchmarkRunSchema = z.object({
+  workflow: workflowSchema,
+  costLimitUsd: optionalPositiveNumber,
+  maxOutputTokens: optionalPositiveInt,
+  cheapModel: optionalNonEmptyString,
+  strongModel: optionalNonEmptyString
 });
 
 type CreateDatasetInput = Parameters<typeof createDatasetTask>[0];

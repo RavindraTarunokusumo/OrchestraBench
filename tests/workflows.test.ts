@@ -3,7 +3,7 @@ import { createMockExecutor } from "@/lib/execution/mock-executor";
 import { runWorkflow } from "@/lib/workflows/runner";
 import { createMockProvider } from "@/lib/providers/mock-provider";
 import type { WorkflowKind } from "@/lib/domain/types";
-import type { ModelProvider } from "@/lib/providers/types";
+import type { ModelProvider, ModelRequest } from "@/lib/providers/types";
 
 const mockExecutor = createMockExecutor({ resolved: true, testsPassed: 1, testsTotal: 1 });
 
@@ -131,5 +131,41 @@ describe("runWorkflow", () => {
     expect(result.status).toBe("partial");
     expect(result.execution.resolved).toBe(false);
     expect(result.evaluation.resolved).toBe(false);
+  });
+
+  it("uses cheapModel and strongModel overrides from run input", async () => {
+    const result = await runWorkflow({
+      input: {
+        ...baseInput,
+        workflow: "cheap_first",
+        cheapModel: "override/cheap",
+        strongModel: "override/strong"
+      },
+      provider: createMockProvider({ verifierConfidence: 0.2 }),
+      executor: mockExecutor
+    });
+
+    expect(result.calls.find((call) => call.role === "cheap_reviewer")?.model).toBe("override/cheap");
+    expect(result.calls.find((call) => call.role === "strong_reviewer")?.model).toBe("override/strong");
+  });
+
+  it("forwards maxOutputTokens to the provider on each model call", async () => {
+    const capturedRequests: ModelRequest[] = [];
+    const capturingProvider: ModelProvider = {
+      label: "Capturing provider",
+      async complete(request) {
+        capturedRequests.push(request);
+        return createMockProvider().complete(request);
+      }
+    };
+
+    await runWorkflow({
+      input: { ...baseInput, workflow: "single_cheap", maxOutputTokens: 256 },
+      provider: capturingProvider,
+      executor: mockExecutor
+    });
+
+    expect(capturedRequests).toHaveLength(1);
+    expect(capturedRequests[0]?.maxOutputTokens).toBe(256);
   });
 });

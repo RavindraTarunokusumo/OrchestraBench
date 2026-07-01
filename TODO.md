@@ -1,22 +1,27 @@
 # TODO.md
 
-This file contains active or future work only.
+Active work only. Archive completed sessions under `docs/iterations/archive/`.
 
-Completed sessions are archived under `docs/iterations/archive/`:
-- `2026-06-28-autopilot-backlog-run.md` — Autopilot run over the backlog (in progress): cycle 0 Autopilot doc (PR #7, merge `e62d4d5`); cycle 1 repair-run input validation (PR #8, merge `6c23367`); cycle 2 execution scoring & latency (PR #9, merge `75c9389`); cycle 3 local-dev & legacy-data robustness (PR #10, merge `2b4cee3`); cycle 4 shared formatters & SSE framing (PR #11, merge `56fdad1`); cycle 5 candidate-fix surfacing & repair prompts (PR #12, merge `436de93`); cycle 6 file-store atomic-write hardening (PR #13, merge `4ec6237`); cycle 7 OrchestrationCanvas tween signature (PR #14, merge `17bdbd8`); cycle 8 /workflows guide page (PR #15, merge `2964b20`); cycle 9 runs CSV export (PR #16, merge `436c2fe`).
-- `2026-06-27-repair-mode-phase1-e2e-verification.md` — QuixBugs pin fix + live E2B end-to-end proof (PR #6, merge `2d8526d`).
-- `2026-06-27-repair-mode-phase2-dashboard-datasets.md` — dashboard/datasets repair-metrics repurpose (PR #5, merge `c3be558`).
-- `2026-06-27-benchmark-repair-mode-phase1.md` — code-repair pivot (PR #3, merge `f9c80d2`).
-- `earlier-sessions-mvp-and-ui-overhaul.md` — MVP milestones + UI overhaul (PR #2).
+## Session: Benchmark UX + LangSmith (2026-06-30)
 
-## Autopilot Run — Backlog (started 2026-06-28)
+Spec: `docs/superpowers/specs/2026-06-30-benchmark-ux-langsmith-design.md` (approved)
+Branch: `feat/benchmark-ux-redesign` · worktree `.worktree/benchmark-ux-redesign`
+Handoff: native subagents (Task tool), orchestrator full-suite gate per commit.
 
-Autonomous run over the whole backlog. Recorded decisions: cohesive small fixes are batched into themed cycles (each a reviewable PR; every sub-item still its own commit per Workflow Rule 1); minor single-concern patches (≤2 files, no new module) are implemented directly with the full verification gate; substantive cycles (new modules/pages, cross-cutting behavior) are delegated to Grok per the handoff. Mega-features needing external infra/accounts are spec'd with implementation deferred.
+- [x] **Task 1** — Benchmark catalog (`ff417d8`)
+- [x] **Task 2** — RunConfig extension (`6c3cbda`)
+- [x] **Task 3** — LangSmith wrappers (`2ce59e7`)
+- [x] **Task 4** — Batch runner + SSE API (`c177682`)
+- [x] **Task 5** — Shared `RunConfigForm` component (`18faf2e`)
+- [x] **Task 6** — Benchmark run page (progress bar UI) (`18faf2e`)
+- [x] **Task 7** — Benchmark detail page (`18faf2e`)
+- [x] **Task 8** — Dashboard benchmark cards (`18faf2e`)
+- [x] **Task 9** — `/runs/new` per-task only (`18faf2e`)
+- [x] **Task 10** — Nav + redirects (`18faf2e`)
+- [x] **Task 11** — Docs + `.env.example` (`01cbb31`)
+- [x] **PR #18** — https://github.com/RavindraTarunokusumo/OrchestraBench/pull/18 (review fixes pushed)
 
-- [ ] **Cycle 10 — Cost/latency budgets per workflow** (L4).
+### Deferred (unchanged)
 
-### Specs only (implementation deferred — external infra / accounts / large design)
-
-- [ ] A1: Repair mode Phase 3 — heavy adapters (Defects4J / SWE-bench Lite) with repo checkout in the sandbox; Vercel Sandbox executor adapter; multi-language (Java) execution.
-- [ ] L1: Evaluation harness (Braintrust/LangSmith/etc.).
-- [ ] L3: Human feedback UI.
+- [ ] A1: Repair mode Phase 3 — heavy adapters
+- [ ] L3: Human feedback UI
